@@ -199,21 +199,20 @@ main <- function(opt){
   cat(">> MSSTATS PIPELINE\n")
   config = tryCatch(yaml.load_file(opt$config), error = function(e) {cat(opt$config);break} )
   
+  # process MaxQuant data, link with keys, and convert for MSStats format
   if(config$data$enabled){
     cat(">> LOADING DATA\n")
-    data = fread(config$files$data, stringsAsFactors=F, integer64 = 'double')
-    setnames(data, colnames(data),gsub('\\s','.',colnames(data)))
-    keys = fread(config$files$keys, stringsAsFactors=F, integer64 = 'double')
+    #data = fread(config$files$data, stringsAsFactors=F, integer64 = 'double')  # Found more bugs in fread. Not worth the compormise in data integrity just to save time reading in data
+    data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
+    keys = read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
     
     ## the following lines were added to integrate the Label with the Filename when using multiple labels (e.g. H/L)
     ## currently we leave this in because the MSstats discinction on labeltype doesn't work 
-    ## see ISSUES https://github.com/everschueren/RMSQ/issues/1
-    
-    tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found\n'))
-    tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found\n'))
+    if(grep('Raw.file', names(data))) names(data)[grep('Raw.file', names(data))] = 'RawFile'
+    if(grep('Raw.file', names(keys))) names(keys)[grep('Raw.file', names(keys))] = 'RawFile'
     
     cat('\tVERIFYING DATA AND KEYS\n')
-    if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
+    if(!'IsotopeLabelType' %in% colnames(data)) data$IsotopeLabelType = 'L'
 
     data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
     data$RawFile = paste(data$RawFile, data$IsotopeLabelType, sep='')
@@ -221,11 +220,11 @@ main <- function(opt){
     keys$Run = paste(keys$IsotopeLabelType,keys$Run , sep='')
     data$IsotopeLabelType = 'L'
     keys$IsotopeLabelType = 'L'
-    data[Intensity<1,]$Intensity=NA ## fix for weird converted values from fread
+    # data[data$Intensity<1,]$Intensity=NA ## fix for weird converted values from fread --  don't think we need this anymore since we are not using fread
     
     ## end hacks for SILAC
     
-    ## FILTERING
+    ## FILTERING : handles Protein Groups and Modifications
     if(config$filters$enabled) data_f = filterData(data, config) else data_f=data
     
     ## FORMATTING IN WIDE FORMAT FOR NORMALIZATION PURPOSES
