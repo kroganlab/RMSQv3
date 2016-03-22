@@ -267,7 +267,8 @@ main <- function(opt){
       
     }else{
       cat(sprintf("\tREADING PREPROCESSED\t%s\n", config$msstats$msstats_input)) 
-      dmss = fread(config$msstats$msstats_input, stringsAsFactors=F, integer64 = 'double')
+      dmss = read.delim(config$msstats$msstats_input, stringsAsFactors=F, integer64 = 'double')
+      dmss <- data.table(dmss)
     }
     
     cat(sprintf('>>LOADING MSSTATS %s VERSION\n', config$msstats$version))
