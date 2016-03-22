@@ -204,15 +204,20 @@ main <- function(opt){
     cat(">> LOADING DATA\n")
     #data = fread(config$files$data, stringsAsFactors=F, integer64 = 'double')  # Found more bugs in fread. Not worth the compormise in data integrity just to save time reading in data
     data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
+    data <- data.table(data)
+    setnames(data, colnames(data),gsub('\\s','.',colnames(data)))
     keys = read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
+    keys <- data.table(keys)
     
     ## the following lines were added to integrate the Label with the Filename when using multiple labels (e.g. H/L)
     ## currently we leave this in because the MSstats discinction on labeltype doesn't work 
-    if(grep('Raw.file', names(data))) names(data)[grep('Raw.file', names(data))] = 'RawFile'
-    if(grep('Raw.file', names(keys))) names(keys)[grep('Raw.file', names(keys))] = 'RawFile'
+    ## see ISSUES https://github.com/everschueren/RMSQ/issues/1
+    
+    tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found\n'))
+    tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found\n'))
     
     cat('\tVERIFYING DATA AND KEYS\n')
-    if(!'IsotopeLabelType' %in% colnames(data)) data$IsotopeLabelType = 'L'
+    if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
 
     data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
     data$RawFile = paste(data$RawFile, data$IsotopeLabelType, sep='')
@@ -220,7 +225,7 @@ main <- function(opt){
     keys$Run = paste(keys$IsotopeLabelType,keys$Run , sep='')
     data$IsotopeLabelType = 'L'
     keys$IsotopeLabelType = 'L'
-    # data[data$Intensity<1,]$Intensity=NA ## fix for weird converted values from fread --  don't think we need this anymore since we are not using fread
+    data[Intensity<1,]$Intensity=NA ## fix for weird converted values from fread
     
     ## end hacks for SILAC
     
