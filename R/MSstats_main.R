@@ -272,37 +272,17 @@ main <- function(opt){
     }
     
     cat(sprintf('>>LOADING MSSTATS %s VERSION\n', config$msstats$version))
-    if(!is.null(config$msstats$version) & config$msstats$version == 'MSstats.daily'){
+    # check if there is nothing listed for the ms
+    if( is.null(config$msstats$version) ){
+      require('MSstats', character.only = T)
+      cat('\tUsing Msstats version', installed.packages()['MSstats','Version'], '\n')
+    }else if(config$msstats$version == 'MSstats.daily'){
       library('MSstats.daily', character.only = T) 
-    }else if(!is.null(config$msstats$version) & config$msstats$version == 'MSstats'){
-      library('MSstats', character.only = T) 
     }else{
-      if(file.exists(config$msstats$version)){
-        for (fname in list.files(config$msstats$version, pattern = '\\.[Rr]$')){
-          cat(sprintf("\tLOADING %s\n", fname))
-          source(file.path(config$msstats$version, fname))
-        }
-      }else{
-        cat(sprintf('COULD NOT LOAD MSSTATS FUNCTIONS AT %s', config$msstats$version)) 
-      }
+      stop( 'COULD NOT FIND MSSTATS VERSION. PLEASE MAKE SURE THERE IS A VERSION ON THIS MACHINE.') 
     }
     
-    ## solely for debugging purposes
-    if(exists("DEBUG")){
-      if(DEBUG){
-        if(!DEBUGALL){
-          set.seed(7)
-          protein_sample  = sample(unique(dmss$ProteinName), 100)
-          dmss_sample = dmss[dmss$ProteinName %in% protein_sample,]
-          if(DEBUGONE){
-            dmss_sample_1 = dmss[dmss$Protein==DEBUGSUBJECT,]
-            dmss_sample = rbind(dmss_sample, dmss_sample_1)
-          }
-          dmss = dmss_sample
-        }
-      }  
-    }
-    
+    # Read in contrasts file
     contrasts = as.matrix(read.delim(config$files$contrasts, stringsAsFactors=F))
     results = runMSstats(dmss, contrasts, config)
   }
