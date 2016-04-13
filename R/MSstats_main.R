@@ -96,35 +96,65 @@ normalizeData = function(data_w, config){
 }
 
 runMSstats = function(dmss, contrasts, config){
-  
+  # plot the data BEFORE normalization
   if(grepl('before', config$msstats$profilePlots)){
-    mssquant = dataProcess(dmss, normalization=F, fillIncompleteRows = T)  
+    mssquant = dataProcess(raw = dmss, 
+                           normalization=F,
+                           betweenRunInterferenceScore = config$msstats$interference,
+                           fillIncompleteRows = T,
+                           summaryMethod = config$msstats$summaryMethod,
+                           censoredInt = config$msstats$censoredInt, 
+                           cutoffCensored = config$msstats$cutoffCensored,
+                           MBimpute = config$msstats$MBimpute,
+                           featureSubset=config$msstats$feature_subset)  
     dataProcessPlots(data=mssquant, type="ProfilePlot", featureName="Peptide", address=gsub('.txt','-before',config$files$output))
     dataProcessPlots(data=mssquant, type="QCPlot", address=gsub('.txt','-before',config$files$output))
   }
   
-  if(!is.null(config$msstats$normalization_reference) & config$msstats$normalization_method == 'globalStandards'){
+  # Normalization
+  if(!is.null(config$msstats$normalization_reference) & config$msstats$normalization_method == 'globalStandards'){  # if globalStandars is selected, must have a reference protein(s)
     normalization_refs = unlist(lapply(strsplit(config$msstats$normalization_reference, split = ','), FUN=trim))
-    mssquant = dataProcess(dmss, normalization=config$msstats$normalization_method, nameStandards=normalization_refs , fillIncompleteRows=T)
+    #mssquant = dataProcess(dmss, normalization=config$msstats$normalization_method, nameStandards=normalization_refs , fillIncompleteRows=T)
+    mssquant = dataProcess(raw = dmss, 
+                           normalization=config$msstats$normalization_method,
+                           nameStandards=normalization_refs,
+                           betweenRunInterferenceScore = config$msstats$interference,
+                           fillIncompleteRows = T,
+                           summaryMethod = config$msstats$summaryMethod,
+                           censoredInt = config$msstats$censoredInt, 
+                           cutoffCensored = config$msstats$cutoffCensored,
+                           MBimpute = config$msstats$MBimpute,
+                           featureSubset=config$msstats$feature_subset)
   }else{
     cat(sprintf('>> NORMALIZATION\t%s\n',config$msstats$normalization_method))
-    mssquant = dataProcess(dmss, normalization=config$msstats$normalization_method , fillIncompleteRows = F, betweenRunInterferenceScore = F, FeatureSelection = F)
+    #mssquant = dataProcess(dmss, normalization=config$msstats$normalization_method , fillIncompleteRows = F, betweenRunInterferenceScore = F)
+    mssquant = dataProcess(raw = dmss, 
+                           normalization=config$msstats$normalization_method,
+                           betweenRunInterferenceScore = config$msstats$interference,
+                           fillIncompleteRows = T,
+                           summaryMethod = config$msstats$summaryMethod,
+                           censoredInt = config$msstats$censoredInt, 
+                           cutoffCensored = config$msstats$cutoffCensored,
+                           MBimpute = config$msstats$MBimpute,
+                           featureSubset=config$msstats$feature_subset)
   } 
   
+  # plot the data AFTER normalization
   if(grepl('after', config$msstats$profilePlots)){
     dataProcessPlots(data=mssquant, type="ProfilePlot", featureName="Peptide", address=gsub('.txt','-after',config$files$output))
     dataProcessPlots(data=mssquant, type="QCPlot", address=gsub('.txt','-after',config$files$output))
   }
   
   if(!all(levels(mssquant$GROUP_ORIGINAL) == colnames(contrasts))){
-    cat(sprintf('\tERROR IN CONTRAST COMPARISON: GROUP LEVELS DIFFERENT FROM CONTRASTS FILE\n\tGROUP LEVELS\t%s\n\tCONTRASTS FILE\t%s\n', paste(levels(mssquant$GROUP_ORIGINAL),collapse=','),paste(colnames(contrasts),collapse=',')))
-    quit()
+    stop(sprintf('\tERROR IN CONTRAST COMPARISON: GROUP LEVELS DIFFERENT FROM CONTRASTS FILE\n\tGROUP LEVELS\t%s\n\tCONTRASTS FILE\t%s\n', paste(levels(mssquant$GROUP_ORIGINAL),collapse=','),paste(colnames(contrasts),collapse=',')))
   } 
   
   cat(sprintf('\tFITTING CONTRASTS:\t%s\n',paste(rownames(contrasts),collapse=',')))
-  write.table(mssquant, file=gsub('.txt','-mss-normalized.txt',config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
-  results = groupComparison(data = mssquant, contrast.matrix = contrasts, labeled = as.logical(config$msstats$labeled), scopeOfBioReplication = config$msstats$scopeOfBioReplication, scopeOfTechReplication = config$msstats$scopeOfTechReplication, interference = as.logical(config$msstats$interference), equalFeatureVar = as.logical(config$msstats$equalFeatureVar), missing.action = config$msstats$missing_action)$ComparisonResult
-  write.table(results, file=config$files$output, eol="\n", sep="\t", quote=F, row.names=F, col.names=T)  
+  write.table(mssquant$ProcessedData, file=gsub('.txt','-mss-normalized.txt',config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
+  #results = groupComparison(data = mssquant, contrast.matrix = contrasts, labeled = as.logical(config$msstats$labeled), scopeOfBioReplication = config$msstats$scopeOfBioReplication, scopeOfTechReplication = config$msstats$scopeOfTechReplication, interference = as.logical(config$msstats$interference), equalFeatureVar = as.logical(config$msstats$equalFeatureVar), missing.action = config$msstats$missing_action)$ComparisonResult
+  results = groupComparison(data = mssquant, contrast.matrix = contrasts)
+  write.table(results$ComparisonResult, file=config$files$output, eol="\n", sep="\t", quote=F, row.names=F, col.names=T)  
+  write.table(results$ModelQC, file=gsub(".txt","_ModelQC.txt",config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T) 
   cat(sprintf(">> WRITTEN\t%s\n",config$files$output))
   return(results)
 }

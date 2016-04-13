@@ -44,7 +44,16 @@ Arguments:
 ```
 
 ##### annotate
-Annotates the proteins in the results or results-wide files after they've been through the MSStats pipeline. 
+Annotates the proteins in the results or results-wide files after they've been through the MSStats pipeline. Multiple species can be searched at once, simply separate them by a "-". (eg. human-mouse)
+
+```
+Arguments:
+-c annotate
+-f results_file_path
+-o output_file_path
+-s species (human|mouse)
+-d uniprot_dir (directory containing uniprot file with protein masses)
+```
 
 ##### results-wide
 Converts the normal MSStats output file into "wide" format where each row represents a protein's results, and each column represents the comparison made by MSStats. The fold change and p-value of each comparison will be it's own column.
@@ -107,7 +116,7 @@ Arguments:
 ```
 
 ##### mist
-Converts MaxQuant evidence file into a file format compatible with the MiST pipeline. Note that this is the MiST *data* file, and that an additional *keys* file will have to be constructed before running MiST.
+Converts MaxQuant evidence file into a file format compatible with the MiST pipeline. Note that this is the MiST *data* file, and that an additional *keys* file will have to be constructed before running MiST. Multiple species can be searched at once, simply separate them by a "-". (eg. human-mouse)
 
 ```
 Arguments:
