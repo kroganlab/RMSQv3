@@ -375,9 +375,11 @@ main <- function(opt){
   
   ## ANNOTATING RESULT FILE
   if(config$output_extras$enabled){
-    if(! is.null(config$output_extras$msstats_output)) results = read.delim(config$output_extras$msstats_output, stringsAsFactors=F)
-    writeExtras(results, config)
+    if(!config$msstats$enabled) results = read.delim(config$output_extras$msstats_output, stringsAsFactors=F)
+    writeExtras(results$ComparisonResult, config)
   }
+  
+  cat(">> ANALYSIS COMPLETE! HAVE A NICE DAY :)\n")
 }
 
 #########################
