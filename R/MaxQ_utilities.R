@@ -236,7 +236,7 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
 }
 
 
-MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='human'){
+MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='HUMAN'){
   cat(">> ANNOTATING\n")
   results = read.delim(input_file, stringsAsFactors=F, sep='\t')
   
