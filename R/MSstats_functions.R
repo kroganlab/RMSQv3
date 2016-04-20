@@ -186,9 +186,14 @@ plotHeat = function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_c
   heat_data = data.frame(mss_F, names=names)
   #heat_data = mss_F[,c('uniprot_id','Label','log2FC')]
   
-  ## good
+  ## create matrix from log2FC or p-value as user defined
   if(display=='log2FC'){
-    heat_data_w = dcast(names ~ Label, data=heat_data, value.var='log2FC')  
+    # Issues with extreme_val later if we have Inf/-Inf values.
+    if( sum(is.infinite(heat_data$log2FC)) > 0 ){
+      idx <- is.infinite(heat_data$log2FC)
+      heat_data$log2FC[ idx ] <- NA
+    }
+    heat_data_w = dcast(names ~ Label, data=heat_data, value.var='log2FC') 
   }else if(display=='pvalue'){
     heat_data$adj.pvalue = -log10(heat_data$adj.pvalue+10^-16)  
     heat_data_w = dcast(names ~ Label, data=heat_data, value.var='adj.pvalue')  
@@ -208,10 +213,10 @@ plotHeat = function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_c
   colors_neg = rev(colorRampPalette(brewer.pal("Blues",n=extreme_val/bin_size))(signed_bins))
   colors_pos = colorRampPalette(brewer.pal("Reds",n=extreme_val/bin_size))(signed_bins)
   colors_tot = c(colors_neg, colors_pos)
-  print("here2")
+  
   if(is.null(labelOrder)){
-	print("Creating heatmap")
-	pheatmap(heat_data_w, scale="none", cellheight=10, cellwidth=10, filename =out_file, color=colors_tot, breaks=seq(from=-extreme_val, to=extreme_val, by=bin_size), cluster_cols=cluster_cols, fontfamily="mono")  
+    cat("\t Saving heatmap\n")
+    pheatmap(heat_data_w, scale="none", cellheight=10, cellwidth=10, filename =out_file, color=colors_tot, breaks=seq(from=-extreme_val, to=extreme_val, by=bin_size), cluster_cols=cluster_cols, fontfamily="mono")  
   }else{
     heat_data_w = heat_data_w[,labelOrder]
     pheatmap(heat_data_w, scale="none", cellheight=10, cellwidth=10, filename=out_file, color=colors_tot, breaks=seq(from=-extreme_val, to=extreme_val, by=bin_size), cluster_cols=cluster_cols, fontfamily="mono")
@@ -262,10 +267,17 @@ peptideIntensityPerFile = function(ref_peptides, output_file, PDF=T){
 }
 
 volcanoPlot = function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='', PDF=T, decimal_threshold=16){
+   #results_ann[grep(selected_labels,results_ann$Label),] -> mss_results_sel
+  
+  # handle cases where log2FC is Inf. There are no pvalues or other information for these cases :(
+  # Issues with extreme_val later if we have Inf/-Inf values.
+  if( sum(is.infinite(mss_results_sel$log2FC)) > 0 ){
+    idx <- is.infinite(mss_results_sel$log2FC)
+    mss_results_sel$log2FC[ idx ] <- NA
+  }
   
   min_x = -ceiling(max(abs(mss_results_sel$log2FC), na.rm=T))
   max_x = ceiling(max(abs(mss_results_sel$log2FC), na.rm=T))
-  if(nrow(mss_results_sel[mss_results_sel$adj.pvalue == 0 | mss_results_sel$adj.pvalue == -Inf,]) > 0) mss_results_sel[!is.na(mss_results_sel$adj.pvalue) & (mss_results_sel$adj.pvalue == 0 | mss_results_sel$adj.pvalue == -Inf),]$adj.pvalue = 10^-decimal_threshold
   max_y = ceiling(-log10(min(mss_results_sel[mss_results_sel$adj.pvalue > 0,]$adj.pvalue, na.rm=T))) + 1
   
   l = length(unique(mss_results_sel$Label))
