@@ -176,21 +176,74 @@ convertDataLongToMss = function(data_w, keys, config){
   return(dmss)  
 }
 
-writeExtras = function(results, config){
+
+# annotate the files based on the Uniprot accession id's
+Extras.annotate = function(results, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='HUMAN'){
   cat(">> ANNOTATING\n")
-  if(config$output_extras$biomart){
-    #mart = useMart(biomart = 'unimart')
-    mart = useMart(biomart = 'unimart', dataset = 'uniprot', verbose = T, host="www.ebi.ac.uk", path="/uniprot/biomart/martservice")
-    mart_anns = AnnotationDbi::select(mart, keytype='accession', columns=c('accession','name','protein_name','gene_name','ensembl_id'), keys=as.character(unique(results$Protein)))
-    if(nrow(mart_anns) > 0){
-      mart_anns = aggregate(. ~ accession, data=mart_anns, FUN=function(x)paste(unique(x),collapse=','))
-      results_ann = merge(results, mart_anns, by.x='Protein', by.y='accession', all.x=T)
-      cat(sprintf('\tCHANGED OUTPUT FILE TO\t%s\n',config$files$output))
-      write.table(results_ann, file=gsub('.txt','-ann.txt',config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
-      cat(sprintf(">> WRITTEN\t%s\n",config$files$output)) 
+  
+  # read in all the annotation files from the uniprot_db directory
+  species_split = unlist(strsplit(species, "-"))
+  Uniprot = NULL
+  for(org in species_split){
+    cat(sprintf("\tLOADING %s\n",org))
+    tmp = read.delim2(sprintf("%s/uniprot_protein_descriptions_%s.txt",uniprot_dir,org), stringsAsFactors=F, quote="")    
+    if(is.null(Uniprot)){
+      Uniprot = as.data.frame(tmp)
     }else{
-      results_ann = results
+      Uniprot = rbind(Uniprot, tmp)  
     }
+  }
+  
+  # get list of all unique prey entries in this file. Keep 'group_sep' in mind.
+  preys <- unique(results$Protein)
+  preys <- preys.original <- data.frame(prey = preys, idx = 1:length(preys), stringsAsFactors=F)
+  # split apart all the preys and index them so we can piece them back together when merging
+  preys <- do.call(rbind, apply(preys, 1, function(y){ data.frame(prey = unlist(strsplit(y[1], ";")), idx = as.numeric(y[2]), stringsAsFactors = F) } ))
+  
+  # annotate all the preys wiht the Uniprot info
+  preys <- merge( preys, Uniprot[,c("Entry","Entry.name","Protein.names","Gene.names")], by.x ="prey", by.y="Entry", all.x=T)
+  # aggregate all the preys on the indexes so we can merge with the original data
+  
+  # merge protein name
+  tmp <- aggregate(data = preys[,c("prey",'idx','Entry.name')], .~idx, paste, collapse=";")
+  names(tmp) <- c('idx','uniprot_ac','Protein_name')
+  preys.new <- merge(preys.original, tmp, by='idx', all.x=T)
+  
+  # merge protein description
+  tmp <- aggregate(data = preys[,c('idx','Protein.names')], .~idx, paste, collapse=";")
+  names(tmp) <- c('idx', 'Protein_desc')
+  preys.new <- merge(preys.new, tmp, by='idx', all.x=T)
+  
+  # merge protein description
+  preys$Gene.names <- gsub(" .*","", preys$Gene.names)
+  tmp <- aggregate(data = preys[,c('idx','Gene.names')], .~idx, paste, collapse=";")
+  names(tmp) <- c('idx','Gene.names')
+  preys.new <- merge(preys.new, tmp, by='idx',all.x=T)
+  
+  # merge the annotations all back into the original data
+  results_out <- merge(results, preys.new, by.x="Protein", by.y="prey", all.x=T)
+  results_out$idx = c()
+  
+  # alert user of any unmapped proteins
+  unmapped = unique(results_out[is.na(results_out$uniprot_ac),"Protein"]) 
+  cat('UNMAPPED PROTEINS\t', length(unmapped), '\n')
+  cat('\t',paste(unmapped,collapse='\n\t'),'\n')
+  write.table(results_out, file=output_file, sep='\t', quote=F, row.names=F, col.names=T)
+  cat(">> ANNOTATING COMPLETE!\n")
+  return(results_out)
+}
+
+# Annotate data, plot volcano plots, etc
+writeExtras = function(results, config){
+  
+  if(length(results)==0 | !exists('results')){
+    stop("ERROR!! NO RESULTS FOUND TO ANNOTATE!")
+  }
+  
+  cat(">> ANNOTATING\n")
+  if(config$output_extras$annotate){
+    results_ann <- Extras.annotate(results, output_file=config$files$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = config$output_extras$annotation_dir, species=config$output_extras$species)
+      
   }else{
     results_ann = results
     config$files$output = config$output_extras$msstats_output
