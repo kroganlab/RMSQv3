@@ -36,9 +36,11 @@ msstats :
 output_extras :
   enabled : 1
   msstats_output : 
-  biomart : 1
+  annotate : 1 # 1|0 whether to annotate the proteins in the results or not
+  species : HUMAN-HIV  # can use multiple species, but separate with a "-" eg. HUMAN-MOUSE-HIV-...
+  annotation_dir : /Users/jvondollen/github/kroganlab/source/db/
   comparisons : all # or any grep expression that returns a subset of the contrasts file
-  LFC : -Inf 2
+  LFC : -2 2
   FDR : 0.05
   heatmap : 1 
   heatmap_cluster_cols : 0
