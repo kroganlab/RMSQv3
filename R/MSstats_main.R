@@ -181,6 +181,9 @@ convertDataLongToMss = function(data_w, keys, config){
 Extras.annotate = function(results, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='HUMAN'){
   cat(">> ANNOTATING\n")
   
+  # remove unnamed proteins that are listed as ""
+  results <- results[-which(results$Protein==""),]
+  
   # read in all the annotation files from the uniprot_db directory
   species_split = unlist(strsplit(species, "-"))
   Uniprot = NULL
