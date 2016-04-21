@@ -240,6 +240,9 @@ MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot
   cat(">> ANNOTATING\n")
   results = read.delim(input_file, stringsAsFactors=F, sep='\t')
   
+  # remove unnamed proteins that are listed as ""
+  results <- results[-which(results$Protein==""),]
+  
   # read in all the annotation files from the uniprot_db directory
   species_split = unlist(strsplit(species, "-"))
   Uniprot = NULL
