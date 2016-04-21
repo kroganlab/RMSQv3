@@ -243,15 +243,6 @@ writeExtras = function(results, config){
     stop("ERROR!! NO RESULTS FOUND TO ANNOTATE!")
   }
   
-  cat(">> ANNOTATING\n")
-  if(config$output_extras$annotate){
-    results_ann <- Extras.annotate(results, output_file=config$files$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = config$output_extras$annotation_dir, species=config$output_extras$species)
-      
-  }else{
-    results_ann = results
-    config$files$output = config$output_extras$msstats_output
-  }
-  
   lfc_lower = as.numeric(unlist(strsplit(config$output_extras$LFC,split=" "))[1])
   lfc_upper = as.numeric(unlist(strsplit(config$output_extras$LFC,split=" "))[2])
   ## select subset of labels for heatmap and volcan plots
@@ -262,7 +253,6 @@ writeExtras = function(results, config){
   sign_hits = significantHits(results_ann,labels=selected_labels,LFC=c(lfc_lower,lfc_upper),FDR=config$output_extras$FDR)
   sign_labels = unique(sign_hits$Label)
   cat(sprintf("\tSELECTED HITS FOR PLOTS WITH LFC BETWEEN %s AND %s AT %s FDR:\t%s\n",lfc_lower, lfc_upper, config$output_extras$FDR, nrow(sign_hits)/length(sign_labels))) 
-	  
 	
 	cat(paste("output_file: ", config$files$output, "\n"))
 
@@ -279,6 +269,16 @@ writeExtras = function(results, config){
     file_name = gsub('.txt','-volcano.pdf',config$files$output)
     volcanoPlot(results_ann[grep(selected_labels,results_ann$Label),], lfc_upper, lfc_lower, FDR=config$output_extras$FDR, file_name=file_name)  
   }
+
+	# Annotation the last thing, just in case it fails
+	cat(">> ANNOTATING\n")
+	if(config$output_extras$annotate){
+	  results_ann <- Extras.annotate(results, output_file=config$files$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = config$output_extras$annotation_dir, species=config$output_extras$species)
+	  
+	}else{
+	  results_ann = results
+	  config$files$output = config$output_extras$msstats_output
+	}
 }
 
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
