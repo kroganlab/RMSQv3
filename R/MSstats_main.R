@@ -3,6 +3,7 @@
 ###############################
 ## FILE AND LIB LOADING #######
 
+cat("\nYou are using RMSQ v3\n\n")
 cat(">> LOADING EXTERNAL FILES AND LIBRARIES\n")
 
 suppressMessages(library(getopt))
