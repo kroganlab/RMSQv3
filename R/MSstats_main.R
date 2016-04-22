@@ -239,9 +239,19 @@ Extras.annotate = function(results, output_file=opt$output, uniprot_ac_col='Prot
 
 # Annotate data, plot volcano plots, etc
 writeExtras = function(results, config){
-  
+
   if(length(results)==0 | !exists('results')){
     stop("ERROR!! NO RESULTS FOUND TO ANNOTATE!")
+  }
+
+  # Annotation the last thing, just in case it fails
+  cat(">> ANNOTATING\n")
+  if(config$output_extras$annotate){
+    results_ann <- Extras.annotate(results, output_file=config$files$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = config$output_extras$annotation_dir, species=config$output_extras$species)
+    
+  }else{
+    results_ann = results
+    config$files$output = config$output_extras$msstats_output
   }
   
   lfc_lower = as.numeric(unlist(strsplit(config$output_extras$LFC,split=" "))[1])
@@ -270,20 +280,9 @@ writeExtras = function(results, config){
     file_name = gsub('.txt','-volcano.pdf',config$files$output)
     volcanoPlot(results_ann[grep(selected_labels,results_ann$Label),], lfc_upper, lfc_lower, FDR=config$output_extras$FDR, file_name=file_name)  
   }
-
-	# Annotation the last thing, just in case it fails
-	cat(">> ANNOTATING\n")
-	if(config$output_extras$annotate){
-	  results_ann <- Extras.annotate(results, output_file=config$files$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = config$output_extras$annotation_dir, species=config$output_extras$species)
-	  
-	}else{
-	  results_ann = results
-	  config$files$output = config$output_extras$msstats_output
-	}
 }
 
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
-
 
 main <- function(opt){
   cat(">> MSSTATS PIPELINE\n")
