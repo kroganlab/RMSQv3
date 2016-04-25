@@ -183,7 +183,7 @@ Extras.annotate = function(results, output_file=opt$output, uniprot_ac_col='Prot
   cat(">> ANNOTATING\n")
   
   # remove unnamed proteins that are listed as ""
-  results <- results[-which(results$Protein==""),]
+  if(length(which(results$Protein==""))>0)  results <- results[-which(results$Protein==""),]
   
   # read in all the annotation files from the uniprot_db directory
   species_split = unlist(strsplit(species, "-"))
@@ -244,14 +244,18 @@ writeExtras = function(results, config){
     stop("ERROR!! NO RESULTS FOUND TO ANNOTATE!")
   }
 
-  # Annotation the last thing, just in case it fails
+  # Annotation 
   cat(">> ANNOTATING\n")
-  if(config$output_extras$annotate){
+  if(config$output_extras$annotate & is.null(config$filters$modifications) ){
     results_ann <- Extras.annotate(results, output_file=config$files$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = config$output_extras$annotation_dir, species=config$output_extras$species)
-    
   }else{
+    if( !is.null(config$filters$modifications) ) cat("\tSITES NEED TO BE MAPPED BACK TO PROTEINS BEFORE ANNOTATING.\n")
     results_ann = results
-    config$files$output = config$output_extras$msstats_output
+    if( !is.null(config$output_extras$msstats_output)){
+      config$files$output = config$output_extras$msstats_output
+    }else{
+      cat("\tNO PREVIOUS MSSTAT OUTPUT FILE NOTED. USING CURRENT RESULTS FOR EXTRAS.\n")
+    }
   }
   
   lfc_lower = as.numeric(unlist(strsplit(config$output_extras$LFC,split=" "))[1])
@@ -259,6 +263,9 @@ writeExtras = function(results, config){
   ## select subset of labels for heatmap and volcan plots
   selected_labels = config$output_extras$comparisons
   if(is.null(selected_labels) || selected_labels=='all') selected_labels='*'
+  
+  # remove the Inf, -Inf log2FC hits. 
+  results_ann <- results_ann[!is.infinite(results_ann$log2FC),]
   
   ## select data points  by LFC & FDR criterium in single condition and adding corresponding data points from the other conditions
   sign_hits = significantHits(results_ann,labels=selected_labels,LFC=c(lfc_lower,lfc_upper),FDR=config$output_extras$FDR)
