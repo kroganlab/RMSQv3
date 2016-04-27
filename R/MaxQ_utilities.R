@@ -76,10 +76,6 @@ MQutil.SILACToLong = function(filename, output){
   file = Sys.glob(filename)
   cat(sprintf('\tPROCESSING:\n\t%s\n',paste(file,collapse='\n\t')))
   tmp = fread(file, integer64 = 'double')
-  # transform the Intesities to match the MaxQuant average Ratio H/L. See RMSQ_v3 Issue #2
-  tmp$`Intensity H` <-  ceiling( (tmp$Intensity)/( 1/tmp$`Ratio H/L normalized` + 1) )
-  tmp$`Intensity L` <-  (tmp$Intensity - tmp$`Intensity H`)
-  tmp$HL_new <- tmp$`Intensity H`/tmp$`Intensity L`
   
   # reshape the data and split the heavy and light data
   tmp_long = reshape2::melt(tmp, measure.vars = c('Intensity L','Intensity H'))
