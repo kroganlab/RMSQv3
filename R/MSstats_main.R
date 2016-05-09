@@ -245,7 +245,6 @@ writeExtras = function(results, config){
   }
 
   # Annotation 
-  cat(">> ANNOTATING\n")
   if(config$output_extras$annotate & is.null(config$filters$modifications) ){
     results_ann <- Extras.annotate(results, output_file=config$files$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = config$output_extras$annotation_dir, species=config$output_extras$species)
   }else{
@@ -269,6 +268,7 @@ writeExtras = function(results, config){
   
   ## select data points  by LFC & FDR criterium in single condition and adding corresponding data points from the other conditions
   sign_hits = significantHits(results_ann,labels=selected_labels,LFC=c(lfc_lower,lfc_upper),FDR=config$output_extras$FDR)
+  if( dim(sign_hits)[1] == 0 ) stop("NO SIGNIFICANT HITS DETECTED IN THIS EXPERIMENT. ABORTING PLOTS.\n")
   sign_labels = unique(sign_hits$Label)
   cat(sprintf("\tSELECTED HITS FOR PLOTS WITH LFC BETWEEN %s AND %s AT %s FDR:\t%s\n",lfc_lower, lfc_upper, config$output_extras$FDR, nrow(sign_hits)/length(sign_labels))) 
 	
@@ -415,7 +415,7 @@ if ( !is.null(opt$help) ) {
 
 if(!exists("DEBUG")){
   cat(">> RUN MODE\n")
-  main(opt)
+  system.time(main(opt))
 }else{
   cat(">> DEBUG MODE\n")
 } 
