@@ -267,7 +267,6 @@ peptideIntensityPerFile = function(ref_peptides, output_file, PDF=T){
 }
 
 volcanoPlot = function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='', PDF=T, decimal_threshold=16){
-   #results_ann[grep(selected_labels,results_ann$Label),] -> mss_results_sel
   
   # handle cases where log2FC is Inf. There are no pvalues or other information for these cases :(
   # Issues with extreme_val later if we have Inf/-Inf values.
@@ -278,6 +277,9 @@ volcanoPlot = function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='',
   
   min_x = -ceiling(max(abs(mss_results_sel$log2FC), na.rm=T))
   max_x = ceiling(max(abs(mss_results_sel$log2FC), na.rm=T))
+  # Deal with special cases in the data where we have pvalues = Inf,NA,0
+  if( sum(is.na(mss_results_sel$adj.pvalue))>0 ) mss_results_sel <- mss_results_sel[!is.na(mss_results_sel$adj.pvalue),]
+  if(nrow(mss_results_sel[mss_results_sel$adj.pvalue == 0 | mss_results_sel$adj.pvalue == -Inf,]) > 0) mss_results_sel[!is.na(mss_results_sel$adj.pvalue) & (mss_results_sel$adj.pvalue == 0 | mss_results_sel$adj.pvalue == -Inf),]$adj.pvalue = 10^-decimal_threshold
   max_y = ceiling(-log10(min(mss_results_sel[mss_results_sel$adj.pvalue > 0,]$adj.pvalue, na.rm=T))) + 1
   
   l = length(unique(mss_results_sel$Label))
