@@ -243,7 +243,7 @@ MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot
   results = read.delim(input_file, stringsAsFactors=F, sep='\t')
   
   # remove unnamed proteins that are listed as ""
-  results <- results[-which(results$Protein==""),]
+  if(length(which(results$Protein=="")) >0) results <- results[-which(results$Protein==""),]
   
   # read in all the annotation files from the uniprot_db directory
   species_split = unlist(strsplit(species, "-"))
@@ -264,6 +264,10 @@ MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot
   # split apart all the preys and index them so we can piece them back together when merging
   preys <- do.call(rbind, apply(preys, 1, function(y){ data.frame(prey = unlist(strsplit(y[1], ";")), idx = as.numeric(y[2]), stringsAsFactors = F) } ))
   
+  
+  if( !any(Uniprot$Entry %in% preys$prey) ){
+    return( warning("NO ANNOTATIONS FOUND IN THE DATABASES. PLEASE CHECK THAT THE CORRECT DATABASES WERE ENTERED,\n  AND THAT THE PROTEIN COLUMN CONTAINS THE CORRECT NAMES TO SEARCH.") )
+  }
   # annotate all the preys wiht the Uniprot info
   preys <- merge( preys, Uniprot[,c("Entry","Entry.name","Protein.names","Gene.names")], by.x ="prey", by.y="Entry", all.x=T)
   # aggregate all the preys on the indexes so we can merge with the original data
