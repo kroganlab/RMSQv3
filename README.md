@@ -27,6 +27,26 @@ These functions are designed to work with MaxQuant evidence files. The functions
 
 The `Arguments` section lists the arguments needed for each function. The arcuments (proceeded by the short flag alias -x) should be entered in the same line of the terminal, separated by spaces.
 
+
+### Typical workflows
+The RMSQ pipeline was designed to run in a certain order. The following is the propper order to perform the analysis with RMSQ for SILAC, PTM, and AMPS datasets.
+
+##### PTM analysis
+0. MaxQ_utilities -> convert-silac (for SILAC data only)
+1. MaxQ_utilities -> convert-sites
+2. MSstats
+3. MaxQ_utilities -> results-wide
+4. MaxQ_utilities -> mapback-sites
+5. MaxQ_utilities -> annotate
+
+##### APMS Global Analysis
+1. MSstats
+2. MaxQ_utilities -> results-wide
+4. MaxQ_utilities -> annotate
+
+
+
+
 ### Functions
 #####concat  
 #####convert-silac  
@@ -42,7 +62,7 @@ Arguments:
 
 #####keys  
 #####convert-sites
-This function is a preprocessing function that is used with PTM data. If you want to run a site specific analysis, before running  MSStats on a UB/PH set, you need to convert the evidence file into a format that MSStats will be able to diffentiate the sites with. This outputs a new file that should be used as the input file for your MSStats group conparison analysis.
+This function is a preprocessing function that is used with PTM data. If you want to run a site specific analysis, before running  MSStats on a UB/PH/AC set, you need to convert the evidence file into a format that MSStats will be able to diffentiate the sites with. This outputs a new file that should be used as the input file for your MSStats group conparison analysis.
 
 ```
 Arguments:
@@ -50,7 +70,7 @@ Arguments:
 -f evidence_file_path
 -o output_file_path
 -p reference_proteom_file_path
--t mod_type (ph|ub)
+-t mod_type (ph|ub|ac)
 ```
 
 ##### annotate
