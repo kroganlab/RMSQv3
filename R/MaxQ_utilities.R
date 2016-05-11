@@ -136,6 +136,9 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
   }else if(mod_type=='ph'){
     maxq_mod_residue='(S|T|Y)\\(ph\\)'  
     mod_residue = 'S|T|Y'
+  }else if(mod_type=='ac'){
+    maxq_mod_residue='K\\(ac\\)'  
+    mod_residue = 'K'
   }
   
   ## read in ref. proteome
@@ -223,8 +226,12 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
   setnames(maxq_data,'Modified sequence','mod_seqs')
   unmapped_mod_seqs = maxq_data[!(mod_seqs %in% mod_site_mapping_agg$mod_seqs) & grepl('(gl)',mod_seqs) & !grepl('REV__|CON__',Proteins),]
   unmapped_mod_seqs = unique(unmapped_mod_seqs[,c('mod_seqs','Proteins'),with=F])
-  cat('UNABLE TO MAP\n')
-  print(unmapped_mod_seqs)
+  if(dim(unmapped_mod_seqs)[1]>0){
+    cat('UNABLE TO MAP\n')
+    print(unmapped_mod_seqs)
+  }else{
+    cat('ALL SEQUENCES MAPPED\n')
+  }
   
   final_data = merge(maxq_data, mod_site_mapping_agg, by='mod_seqs')
   setnames(final_data,c('Proteins','mod_sites','mod_seqs'),c('Proteins_ref','Proteins','Modified sequence'))
