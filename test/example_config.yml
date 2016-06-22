@@ -1,8 +1,8 @@
 files :
-  keys : /Users/jvondollen/projects/data/keys.txt
-  data : /Users/jvondollen/projects/data/050215-jfh12-1-18-evidence.txt
-  contrasts : /Users/jvondollen/projects/data/contrasts.txt
-  output : /Users/jvondollen/projects/results/MSStats_v3_test-results.txt
+  keys : /path/to/project/data/keys.txt
+  data : /path/to/project/data/data/evidence.txt
+  contrasts : /path/to/project/data/contrast.txt
+  output : /path/to/project/results/20160621-results.txt
   sequence_type : modified # unmodified, modified
   sample_plots : 1
 data:
@@ -19,7 +19,7 @@ msstats :
   enabled : 1
   msstats_input : 
   version :  # blank = R library version, MSstats.daily = a location where to find it
-  profilePlots : none # before, after, before-after, none
+  profilePlots : before-after # before, after, before-after, none
   normalization_method : equalizeMedians # globalStandards (include a reference protein(s) ), equalizeMedians, quantile, 0
   normalization_reference :  #should be a value in the Protein column
   summaryMethod : TMP # "TMP"(default) means Tukey's median polish, which is robust estimation method. "linear" uses linear mixed model. "logOfSum" conducts log2 (sum of intensities) per run.
@@ -36,11 +36,11 @@ msstats :
 output_extras :
   enabled : 1
   msstats_output : 
-  annotate : 1 # 1|0 whether to annotate the proteins in the results or not
-  species : HUMAN-HIV  # can use multiple species, but separate with a "-" eg. HUMAN-MOUSE-HIV-...
-  annotation_dir : /Users/jvondollen/github/kroganlab/source/db/
+  annotate : 0 # 1|0 whether to annotate the proteins in the results or not
+  species : HUMAN # can use multiple species, but separate with a "-" eg. HUMAN-MOUSE-HIV-...
+  annotation_dir : ~/github/kroganlab/source/db/
   comparisons : all # or any grep expression that returns a subset of the contrasts file
-  LFC : -2 2
+  LFC : -1 1
   FDR : 0.05
   heatmap : 1 
   heatmap_cluster_cols : 0
