@@ -1,7 +1,7 @@
-# RMSQv3
-RMSQ for MSstats v3.3.8
+RMSQv3
+===
 
-
+RMSQ for MSstats v3.3.10
 
 #### Installing MSStats
 ```
@@ -12,17 +12,25 @@ source("http://bioconductor.org/biocLite.R")
 
 biocLite(c("limma","marray","preprocessCore","MSnbase"))
 
-# step 2: install MSstats - please chage the 'LocalPath' with your location.
-install.packages(pkgs="LocalPath/MSstats_3.3.8.tar.gz",repos=NULL,type="source")
+# step 2: install MSstats - Use the version available in this repository `MSstats_3.3.10.tar.gz`. Install it like this:
+install.packages(pkgs="MSstats_3.3.10.tar.gz",repos=NULL,type="source")
 
 # step 3: load the library of MSstats
 library(MSstats)
 
-# step 4: getting started
+# step 4: getting started. Check that it works
 ?MSstats
 ```
 
-### MaxQ_utilities.R
+### Running MSstats v3, `MSstats_main.R`
+
+```
+MSstats_main.R -c configuration_file.yaml
+```
+
+Check the folder `test` for a sample configuration file
+
+### `MaxQ_utilities.R`
 These functions are designed to work with MaxQuant evidence files. The functions include a wide variety of options listed below.
 
 The `Arguments` section lists the arguments needed for each function. The arcuments (proceeded by the short flag alias -x) should be entered in the same line of the terminal, separated by spaces.
