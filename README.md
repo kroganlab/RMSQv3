@@ -154,7 +154,7 @@ Arguments:
 ```
 
 ##### mist
-Converts MaxQuant evidence file into a file format compatible with the MiST pipeline. Note that this is the MiST *data* file, and that an additional *keys* file will have to be constructed before running MiST. Multiple species can be searched at once, simply separate them by a "-". (eg. human-mouse)
+Converts MaxQuant evidence file into a file format compatible with the MiST pipeline. Note that this is the MiST *data* file, and that an additional *keys* file will have to be constructed before running MiST. Multiple species can be searched at once, simply separate them by a "-". (eg. `HUMAN-MOUSE`)
 
 ```
 Arguments:
@@ -162,8 +162,8 @@ Arguments:
 -f evidence_file_path
 -k keys_file_path
 -o output_file_path
--s species (human|mouse)
--d uniprot_dir (directory containing uniprot file with protein masses)
+-s species (e.g.: `-s HUMAN-DENGUE`)
+-d uniprot_dir (directory containing uniprot file with protein length)
 ```
 
 
