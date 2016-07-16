@@ -100,12 +100,18 @@ flattenKeysTechRepeats = function(keys){
 }
 
 mergeMaxQDataWithKeys = function(data, keys, by=c('RawFile')){
-  unique_data = unique(data$RawFile)
-  unique_keys = unique(keys$RawFile)
-  keys_not_found = setdiff(unique_keys, unique_data)
-  data_not_found = setdiff(unique_data, unique_keys)
-  cat(sprintf("keys found: %s \t keys not in data file:\n%s\n", length(unique_keys)-length(keys_not_found), paste(keys_not_found,collapse='\t')))
-  cat(sprintf("data found: %s \t data not in keys file:\n%s\n", length(unique_data)-length(data_not_found), paste(data_not_found, collapse='\t')))
+  # Check if the number of RawFiles is the same.
+  unique_data <- unique(data$RawFile)
+  unique_keys <- unique(keys$RawFile)
+  
+  if (length(unique_keys) != length(unique_data)){
+    keys_not_found = setdiff(unique_keys, unique_data)
+    data_not_found = setdiff(unique_data, unique_keys)
+    cat(sprintf("keys found: %s \t keys not in data file:\n%s\n", length(unique_keys)-length(keys_not_found), paste(keys_not_found,collapse='\t')))
+    cat(sprintf("data found: %s \t data not in keys file:\n%s\n", length(unique_data)-length(data_not_found), paste(data_not_found, collapse='\t')))
+  }else{
+    cat("\nCheck point: the number of RawFiles in both keys and evidences file is identical\n\n")
+  }
   
   ## select only required attributes from MQ format
   data = merge(data, keys, by=by)
