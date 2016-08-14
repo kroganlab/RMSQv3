@@ -15,12 +15,12 @@ suppressMessages(library(limma))
 #########################
 ## CONFIG LOADING #######
 
-ALLOWED_COMMANDS = c('concat','convert-silac','keys','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist')
+ALLOWED_COMMANDS = c('concat','convert-silac','keys','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist', 'mistint')
 
 spec = matrix(c(
   'verbose', 'v', 2, "integer", "",
   'help'   , 'h', 0, "logical", "available arguments (this screen)",
-  'command'  , 'c', 1, "character", sprintf("command to run. Currently supported commands: %s",paste(ALLOWED_COMMANDS,collapse=',')),
+  'command'  , 'c', 1, "character", sprintf("command to run. Currently supported commands:\n %s",paste(ALLOWED_COMMANDS,collapse=',')),
   'files'  , 'f', 1, "character", "files to feed to command. accepts regexp but needs to be quoted",
   'output'  , 'o', 1, "character", "Output file",
   'keys','k', 1, "character", "keys file",
@@ -245,7 +245,7 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
 }
 
 
-MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='HUMAN'){
+MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/Box Sync/db/mist/', species='HUMAN'){
   cat(">> ANNOTATING\n")
   results = read.delim(input_file, stringsAsFactors=F, sep='\t')
   
@@ -499,8 +499,8 @@ MQutil.spectralCounts = function(input_file, keys_file, output_file){
   data = fread(input_file, integer64 = 'double')
   keys = fread(keys_file, integer64 = 'double')
   
-  tryCatch(setnames(data, 'Raw file', 'RawFile'), error=function(e) cat('Raw.file not found\n'))
-  tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found\n'))
+  tryCatch(setnames(data, 'Raw file', 'RawFile'), error=function(e) cat('Raw file not found. Try searching Raw.file instead\n'))
+  tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw file not found. Try searching Raw file instead\n'))
   
   cat('\tVERIFYING DATA AND KEYS\n')
   if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
@@ -515,7 +515,7 @@ MQutil.spectralCounts = function(input_file, keys_file, output_file){
 
 
 # Convert MaxQuant file into a Protein Prospector like format to run through the Mist pipeline
-MQutil.MISTformat = function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/github/kroganlab/source/db/'){
+MQutil.MISTformat = function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/Box Sync/db/mist/'){
   cat('\tREADING IN DATA AND KEYS\n')
 
   data <- data.table(read.delim(input_file, stringsAsFactors=F))
@@ -588,6 +588,82 @@ MQutil.MISTformat = function(input_file, keys_file, output_file, species="HUMAN"
   cat('MIST keys FILE ALSO CREATED. Truly enjoy your day ;-)\n\n')
 }
 
+# Convert MaxQuant file into a Protein Prospector like format to run through the Mist pipeline
+MQutil.MISTINTformat = function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/Box Sync/db/mist/'){
+  cat('\n\n>>Generating input files for MIST using INTENSITY VALUES\n\n')
+  cat('\tREADING IN DATA AND KEYS\n')
+  
+  data <- data.table(read.delim(input_file, stringsAsFactors=F))
+  keys = data.table(read.delim(keys_file, stringsAsFactors = F))
+  
+  tryCatch(setnames(data, 'Raw file', 'RawFile'), error=function(e) cat('Raw file in evidence not found: trying Raw.file instead\n'))
+  tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file in evidence not found: trying Raw file instead\n'))
+  tryCatch(setnames(keys, 'Raw file', 'RawFile'), error=function(e) cat('Raw file in keys not found: trying Raw.file instead\n'))
+  tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file in keys not found: trying Raw file instead\n'))
+  tryCatch(setnames(data,'Intensity','ms_intensity'), error=function(e) stop('\n\nINTENSITY NOT FOUND IN THE evidence FILE!!\n\n'))
+  
+  
+  cat('\n\tVERIFYING DATA AND KEYS\n')
+  if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
+  data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
+  data_sel = data[,c('Proteins','Condition','BioReplicate','Run','RawFile','ms_intensity'),with=F]
+  
+  data_sel = aggregate( ms_intensity ~ Proteins+Condition+BioReplicate+Run+RawFile, data=data_sel, FUN = sum)
+  data_sel = data.frame(data_sel, bait_name=paste(data_sel$Condition, data_sel$BioReplicate, data_sel$Run, sep='_'))
+  
+  # clean up proteins & annotate
+  #~~~~~~~~~~~~~~~~~~~~~~~
+  # remove CON's
+  if( length(grep("^CON__",data_sel$Proteins))>0 ) data_sel = data_sel[-grep("^CON__",data_sel$Proteins),]
+  if( length(grep("^REV__",data_sel$Proteins))>0 ) data_sel = data_sel[-grep("^REV__",data_sel$Proteins),]
+  # remove the party sets
+  if( length(grep(";",data_sel$Proteins))>0 ) data_sel = data_sel[-grep(";",data_sel$Proteins),]     # NOTE!!! We lose a lot of entries this way... :\
+  # keep only uniprot id
+  #data_sel$uniprot_id = gsub("^.*\\|","", data_sel$Proteins)
+  data_sel$Proteins = gsub("(^.*\\|)([A-Z0-9]+)(\\|.*$)","\\2",data_sel$Proteins)
+  # remove blank protein names
+  if(any(data_sel$Proteins == "")){ data_sel <- data_sel[-which(data_sel$Proteins == ""),]}
+  
+  # Add this column that it is required for the preprocessing done by mist 
+  # (this column is generated by Prospector and it is used to eleminate peptides. In this case, does not apply but it has to be there)
+  data_sel$ms_unique_pep = ""
+  # re-order
+  data_sel <- data_sel[,c("RawFile",'Proteins','ms_unique_pep', 'ms_intensity')]
+  # RENAMING!
+  names(data_sel) = c('id','ms_uniprot_ac','ms_unique_pep','ms_intensity')
+  
+  # remove interactions with ms_intensity=0
+  if(any(data_sel$ms_intensity == 0)) { data_sel <- data_sel[-which(data_sel$ms_intensity==0),]}
+  
+  # annotate proteins and add Masses for Mist
+  species_split = unlist(strsplit(species, "-"))
+  Uniprot = NULL
+  for(org in species_split){
+    cat(sprintf("\tLOADING %s\n",org))
+    tmp = read.delim2(sprintf("%s/uniprot_protein_descriptions_%s.txt",uniprot_dir,org), stringsAsFactors=F, quote="")    
+    if(is.null(Uniprot)){
+      Uniprot = as.data.frame(tmp)
+    }else{
+      Uniprot = rbind(Uniprot, tmp)  
+    }
+  }
+  results_annotated = merge(data_sel, Uniprot, all.x=T, by.x='ms_uniprot_ac',by.y='Entry')
+  
+  # Adding the Mass column: it is required for MIST for preprocessing!
+  # For that, we will calculate the mass of the whole protein just taking the average molecular 
+  # weight of an amino acid: 110Da
+  results_annotated$Mass <- results_annotated$Length*110
+  
+  write.table(results_annotated, file=output_file, eol='\n', sep='\t', quote=F, row.names=F, col.names=T)
+  cat('\n>>MIST FILES CREATED!\n')
+  
+  keysout <- subset(keys, select = c(RawFile, Condition))
+  keysname <- 'keys_mistint.txt'
+  write.table(keysout, file=keysname, eol = '\n', sep = '\t', quote = F, row.names = F, col.names = F)
+  cat('>>MIST for INTENSITIES keys FILE ALSO CREATED. Truly enjoy your day ;-)\n\n')
+}
+
+
 
 
 main <- function(opt){
@@ -620,6 +696,8 @@ main <- function(opt){
       MQutil.spectralCounts(input_file = opt$files, keys_file =  opt$keys, output_file = opt$output)
     }else if(opt$command == 'mist'){
       MQutil.MISTformat(input_file = opt$files, keys_file =  opt$keys, output_file = opt$output, species=opt$species, uniprot_dir=opt$uniprot_dir)
+    }else if(opt$command == 'mistint'){
+      MQutil.MISTINTformat(input_file = opt$files, keys_file =  opt$keys, output_file = opt$output, species=opt$species, uniprot_dir=opt$uniprot_dir)
     }
   }else{
     cat(sprintf('COMMAND NOT ALLOWED:\t%s\n',opt$command)) 

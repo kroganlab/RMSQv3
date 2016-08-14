@@ -1,8 +1,8 @@
 files :
-  keys : /Users/djm75/Box Sync/projects/FluomicsProteomics/Flu-human-exvivo/PTMs/H5N1/ph/data/FLU-HUMAN-H5N1-PH-ms3-keys.txt
-  data : /Users/djm75/Box Sync/projects/FluomicsProteomics/Flu-human-exvivo/PTMs/H5N1/ph/data/FLU-HUMAN-H5N1-PH-evidence-modSTY.txt
-  contrasts : /Users/djm75/Box Sync/projects/FluomicsProteomics/Flu-human-exvivo/PTMs/H5N1/ph/data/20160421ms3-FLU-HUMAN-H5N1-PH-contrasts.txt
-  output : /Users/djm75/Box Sync/projects/FluomicsProteomics/Flu-human-exvivo/PTMs/H5N1/ph/results/20160421ms3/20160421-flu-htbe-h5n1-ph-ms3-results.txt
+  keys : /path/to/project/data/keys.txt
+  data : /path/to/project/data/data/evidence.txt
+  contrasts : /path/to/project/data/contrast.txt
+  output : /path/to/project/results/20160621-results.txt
   sequence_type : modified # unmodified, modified
   sample_plots : 1
 data:
