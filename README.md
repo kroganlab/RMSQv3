@@ -180,9 +180,15 @@ Arguments:
 ```
 
 
+##### samplequant
+Aggregates the normalized abundance and replicate data from the samples. Uses the MSstat output file  `...mss-sampleQuant.txt` for the aggregations, and is applied directly to the MSstats results in ***wide*** format.
 
-
-
+```
+Arguments:
+-f sampleQuant_file_path
+-n contrast_file_path
+-r results_wide_file_path
+```
 
 
 
