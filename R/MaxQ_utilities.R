@@ -15,7 +15,7 @@ suppressMessages(library(limma))
 #########################
 ## CONFIG LOADING #######
 
-ALLOWED_COMMANDS = c('concat','convert-silac','keys','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist', 'mistint', 'samplequant')
+ALLOWED_COMMANDS = c('concat','convert-silac','keys','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist', 'mistint')
 
 spec = matrix(c(
   'verbose', 'v', 2, "integer", "",
@@ -33,9 +33,7 @@ spec = matrix(c(
   'lfc_upper','u', 1, "double", "Upper Log2FC to include for heatmap plotting",
   'q_value','q', 1, "double", "q-value (FDR) to include for heatmap plotting",
   'labels','', 1, "character", "labels to include for heatmap plotting",
-  'identifier_column','i', 1, "character", "Identifier column",
-  'results_file','r', 1, "character", "Path to the results-wide file",
-  'contrast_file','n', 1, "character", "Path to the contrast file"),
+  'identifier_column','i', 1, "character", "Identifier column"),
   byrow=T, ncol=5)
 
 opt = getopt(spec = spec, opt = commandArgs(TRUE), command = get_Rscript_filename(), usage = FALSE, debug = FALSE)
@@ -667,117 +665,6 @@ MQutil.MISTINTformat = function(input_file, keys_file, output_file, species="HUM
 
 
 
-# takes in a dcast data frame containing proteins (rows) and a value for each condition (columns)
-MQutil.combine_sq_values <- function(dat, pos, neg){
-  # collapse POSTITIVE conditions together if there's more than one
-  if(length(pos)>1){
-    condition_names =names(dat)[grep(paste(paste("^",pos,"$", sep=""), collapse="|"), names(dat))]
-    pos.counts <- dat[,c("Protein",condition_names) ]
-    # create a collapsed name for the new column
-    collapsed_condition_name = paste(condition_names, collapse="|")
-    # Create new column of the collapsed counts
-    pos.counts[,collapsed_condition_name] <- apply(pos.counts[,condition_names], 1, paste, collapse="|")
-    # keep only proteins and new column
-    pos.counts <- pos.counts[,c("Protein",collapsed_condition_name)]
-  }else{
-    pos.counts <- dat[,c("Protein",pos)]
-  }
-  
-  # collapse NEGATIVE conditions together if there's more than one
-  if(length(neg)>1){
-    condition_names =names(dat)[grep(paste(paste("^",neg,"$", sep=""), collapse="|"), names(dat))]
-    neg.counts <- dat[,c("Protein",condition_names) ]
-    # create a collapsed name for the new column
-    collapsed_condition_name = paste(condition_names, collapse="|")
-    # Create new column of the collapsed counts
-    neg.counts[,collapsed_condition_name] <- apply(neg.counts[,condition_names], 1, paste, collapse="|")
-    # keep only proteins and new column
-    neg.counts <- neg.counts[,c("Protein",collapsed_condition_name)]
-  }else{
-    neg.counts <- dat[,c("Protein",neg)]
-  }
-  
-  # combine pos and neg values together into final representation
-  all.counts <- merge(pos.counts, neg.counts, by="Protein")
-  final_name=paste(names(pos.counts)[2], names(neg.counts)[2], sep="-")
-  all.counts[,final_name] <- apply(all.counts[,-1], 1, paste, collapse=" - ")
-  all.counts <- all.counts[,c("Protein", final_name)]
-  
-  return(all.counts)
-}
-
-
-# Main wrapper that consolidates the abundance data for a results.wide file
-MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
-  
-  # Read in sampleQuant data
-  cat("Reading in data file...\n")
-  x <- read.delim(sq_file, sep='\t', stringsAsFactors = F)
-  
-  results.wide = read.delim(results_file, stringsAsFactors=F)
-  
-  # CONTRASTS
-  cat("Reading in contrasts file...\n")
-  contrasts = read.delim(contrast_file, stringsAsFactors=F)
-  # make sure the column names are in alphabetical order before continuing
-  contrasts = as.matrix( contrasts[,order(dimnames(contrasts)[[2]], decreasing=F)] )
-  
-  # Begin work
-  #~~~~~~~~~~~~
-  # put data into long format, remove missing (NA) values
-  x <- melt(x, factorsAsStrings = F, na.rm=T)
-  
-  # Keep only condiditon names
-  x$variable <- unlist( lapply(strsplit(as.character(x$variable),"_"), function(y){ l= length(y); return( paste(y[-l], collapse="_") )} ) )
-  
-  # count how many times a protein shows up for a condition
-  x.counts <- dcast(x, Protein~variable, fill=NA_real_)
-  # reaults.all <- merge(results.wide, x.counts, by='Protein')
-  
-  # Combine all the normalized intensities for each replicate
-  x$value <- round(x$value,2)
-  x.intensities <- dcast(Protein~variable, data=x, paste, collapse=";", fill=NA_character_)
-  
-  ###########################################
-  #~~~~~~~~~~ GET CONTRAST DATA ~~~~~~~~~~~~~
-  x.counts.list <- x.intensities.list <- list()
-  for(i in 1:dim(contrasts)[1]){
-    # get which conditions are being contrasted this time
-    conditions <- contrasts[i,grep('[^0]',contrasts[i,])]
-    # order the conditions so the positives are on the left, negatives on the right
-    conditions <- conditions[order(conditions, decreasing=T)]
-    
-    # get the names associated with each  side of the contrast
-    pos <- names(conditions)[which(conditions>0)]
-    neg <- names(conditions)[which(conditions<0)]
-    
-    # combine all the counts into a single summarized column
-    x.counts.list[[i]] <- MQutil.combine_sq_values(dat=x.counts, pos=pos, neg=neg)
-    # combine all the intensities into a single summarized column
-    x.intensities.list[[i]] <- MQutil.combine_sq_values(dat=x.intensities, pos=pos, neg=neg)
-  }
-  
-  # combine all the goods together
-  x.counts = Reduce(function(...) merge(..., all=T), x.counts.list)
-  x.intensities = Reduce(function(...) merge(..., all=T), x.intensities.list)
-  
-  names(x.counts)[-1] = paste0(names(x.counts)[-1], "_count")
-  names(x.intensities)[-1] = paste0(names(x.intensities)[-1], "_intensity")
-  # combing all the results together
-  results.all <- merge(x.counts, x.intensities, by="Protein")
-  
-  # add these to the original results-wide file
-  results.all <- merge(results.wide, results.all, by="Protein")
-  # write out the file
-  out_file <- gsub(".txt", "-abundance.txt", results_file)
-  write.table(results.all, out_file, quote = F, row.names=F, sep="\t")
-  
-  return(results.all)
-}
-
-
-
-
 
 main <- function(opt){
   if(opt$command %in% ALLOWED_COMMANDS){
@@ -811,8 +698,6 @@ main <- function(opt){
       MQutil.MISTformat(input_file = opt$files, keys_file =  opt$keys, output_file = opt$output, species=opt$species, uniprot_dir=opt$uniprot_dir)
     }else if(opt$command == 'mistint'){
       MQutil.MISTINTformat(input_file = opt$files, keys_file =  opt$keys, output_file = opt$output, species=opt$species, uniprot_dir=opt$uniprot_dir)
-    }else if(opt$command == 'samplequant'){
-      MQutil.sampleQuant(sq_file = opt$files, contrast_file =  opt$contrast_file, results_file = opt$results_file)
     }
   }else{
     cat(sprintf('COMMAND NOT ALLOWED:\t%s\n',opt$command)) 
@@ -887,11 +772,5 @@ main <- function(opt){
 # opt$files =  '~/Projects/HPCKrogan/Data/FluOMICS/projects/Proteomics/Flu-mouse-invivo/H1N1/ub/data//FLU-MOUSE-H1N1-UB-data.txt'
 # opt$keys = '~/Projects/HPCKrogan/Data/FluOMICS/projects/Proteomics/Flu-mouse-invivo/H1N1/ub/data/FLU-MOUSE-H1N1-UB-keys.txt'
 # opt$output = '~/Desktop/test.txt'
-
-opt=c()
-opt$command = 'samplequant'
-opt$files =  '~/Box Sync/projects/CoxJeff/results/20160801_MSStat_results_UB/msstats/TBLMSE-ub-SE-results-mss-sampleQuant.txt'
-opt$results_file = '~/Box Sync/projects/CoxJeff/results/20160801_MSStat_results_UB/msstats/TBLMSE-ub-SE-results-wide-sites-ann.txt'
-opt$contrast_file = '~/Box Sync/projects/CoxJeff/data/jj/ub/TBLMSE-cox-ub-silac-SE-contrasts.txt'
 
 main(opt)
