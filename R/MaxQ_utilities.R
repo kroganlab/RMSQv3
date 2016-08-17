@@ -714,7 +714,15 @@ MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
   cat("Reading in data file...\n")
   x <- read.delim(sq_file, sep='\t', stringsAsFactors = F)
   
+  # read in the results-wide or results-wide-annotated data
   results.wide = read.delim(results_file, stringsAsFactors=F)
+  
+  # identify protein column name. This can be different depending on if it's PTM data or not
+  if( length(grep("mod_sites", names(results.wide)))>0 ){
+    prot_col = "mod_sites"
+  }else{
+    prot_col = "Protein"
+  }
   
   # CONTRASTS
   cat("Reading in contrasts file...\n")
@@ -753,6 +761,8 @@ MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
     
     # combine all the counts into a single summarized column
     x.counts.list[[i]] <- MQutil.combine_sq_values(dat=x.counts, pos=pos, neg=neg)
+    # add an extra space to make excel not convert everything to dates
+    x.counts.list[[i]][,2] = paste0(" ", x.counts.list[[i]][,2])
     # combine all the intensities into a single summarized column
     x.intensities.list[[i]] <- MQutil.combine_sq_values(dat=x.intensities, pos=pos, neg=neg)
   }
@@ -767,7 +777,7 @@ MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
   results.all <- merge(x.counts, x.intensities, by="Protein")
   
   # add these to the original results-wide file
-  results.all <- merge(results.wide, results.all, by="Protein")
+  results.all <- merge(results.wide, results.all, by.x=prot_col, by.y="Protein")
   # write out the file
   out_file <- gsub(".txt", "-abundance.txt", results_file)
   write.table(results.all, out_file, quote = F, row.names=F, sep="\t")
@@ -893,5 +903,10 @@ main <- function(opt){
 # opt$files =  '~/Box Sync/projects/CoxJeff/results/20160801_MSStat_results_UB/msstats/TBLMSE-ub-SE-results-mss-sampleQuant.txt'
 # opt$results_file = '~/Box Sync/projects/CoxJeff/results/20160801_MSStat_results_UB/msstats/TBLMSE-ub-SE-results-wide-sites-ann.txt'
 # opt$contrast_file = '~/Box Sync/projects/CoxJeff/data/jj/ub/TBLMSE-cox-ub-silac-SE-contrasts.txt'
+# #
+# opt$files = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/results/MSstats3-results-mss-sampleQuant.txt'
+# opt$contrast_file = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/data/contrasts.txt'
+# opt$results_file = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/results/MSstats3-results-wide-annotated.txt'
+
 
 main(opt)
