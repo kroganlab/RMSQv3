@@ -709,9 +709,10 @@ MQutil.combine_sq_values <- function(dat, pos, neg){
 
 # Main wrapper that consolidates the abundance data for a results.wide file
 MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
+  cat(">>SUMMARIZING ABUNDANCE DATA\n")
   
   # Read in sampleQuant data
-  cat("Reading in data file...\n")
+  cat(">> LOADING DATA FILE\n")
   x <- read.delim(sq_file, sep='\t', stringsAsFactors = F)
   
   # read in the results-wide or results-wide-annotated data
@@ -725,7 +726,7 @@ MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
   }
   
   # CONTRASTS
-  cat("Reading in contrasts file...\n")
+  cat(">>  LOADING CONTRAST FILE\n")
   contrasts = read.delim(contrast_file, stringsAsFactors=F)
   # make sure the column names are in alphabetical order before continuing
   contrasts = as.matrix( contrasts[,order(dimnames(contrasts)[[2]], decreasing=F)] )
@@ -739,15 +740,17 @@ MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
   x$variable <- unlist( lapply(strsplit(as.character(x$variable),"_"), function(y){ l= length(y); return( paste(y[-l], collapse="_") )} ) )
   
   # count how many times a protein shows up for a condition
+  cat("\tSUMMARIZING REPLICATE COUNTS\n")
   x.counts <- dcast(x, Protein~variable, fill=NA_real_)
-  # reaults.all <- merge(results.wide, x.counts, by='Protein')
   
   # Combine all the normalized intensities for each replicate
+  cat("\tSUMMARIZING REPLICATE INTENSITIES\n")
   x$value <- round(x$value,2)
   x.intensities <- dcast(Protein~variable, data=x, paste, collapse=";", fill=NA_character_)
   
   ###########################################
   #~~~~~~~~~~ GET CONTRAST DATA ~~~~~~~~~~~~~
+  cat("\tAGGREGATING CONTRASTS\n")
   x.counts.list <- x.intensities.list <- list()
   for(i in 1:dim(contrasts)[1]){
     # get which conditions are being contrasted this time
@@ -782,9 +785,9 @@ MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
   out_file <- gsub(".txt", "-abundance.txt", results_file)
   write.table(results.all, out_file, quote = F, row.names=F, sep="\t")
   
-  return(results.all)
+  cat(">> ABUNDANCE SUMMARIZATION COMPLETE. HAVE A NICE DAY :)\n")
+  # return(results.all)
 }
-
 
 
 
