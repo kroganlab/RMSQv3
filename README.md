@@ -127,6 +127,26 @@ Arguments:
 -q FDR significance cutoff
 ```
 
+##### replicateplots
+Outputs a replicate plots based on a user provied file containing the replicates to be compared. Values are based on the log2 value of the maximum intensities per modified sequence. The "replicate file" should describe which replicates of which conditions should be compared against eachother. Each row represents a replicate plot to be created. The file should be structured using the following format and column names:
+
+| condition1 | rep1_1 | rep1_2 | condition2 | rep2_1 | rep2_2 |
+|---|---|---|---|---|---|
+|  Infected | Infected_Rep1_name | Infected_Rep2_name | Negative | Negative_Rep1_name | Negative_Rep2_name |
+| etc... |   |   |   |   |   |
+| etc... |   |   |   |   |   |
+
+The arguments for this optionare as follows:
+
+```
+Arguments:
+-c replicateplots
+-f evidence_file_path
+-k keys_file_path
+-r replicate_plot_info_file_path
+-o output_file_path
+```
+
 ##### simplify
 ##### saint-format
 Converts the MaxQuant evidence file to the 3 required files for SAINTexpress. One can choose to either use the `spectral counts` or the `intensities` for the analysis. 
@@ -181,7 +201,7 @@ Arguments:
 
 
 ##### samplequant
-Aggregates the normalized abundance and replicate data from the samples. Uses the MSstat output file  `...mss-sampleQuant.txt` for the aggregations, and is applied directly to the MSstats results in ***wide*** format.
+Aggregates the normalized abundance and replicate data from the samples. Uses the MSstat output file  `...mss-sampleQuant.txt` for the aggregations, and is applied directly to the MSstats results in ***wide*** format. The resulting file will have "abundance" appended to the end of the file name.
 
 ```
 Arguments:
