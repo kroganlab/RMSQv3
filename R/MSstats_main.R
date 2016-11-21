@@ -160,6 +160,22 @@ runMSstats = function(dmss, contrasts, config){
   write.table(results$ComparisonResult, file=config$files$output, eol="\n", sep="\t", quote=F, row.names=F, col.names=T)  
   write.table(results$ModelQC, file=gsub(".txt","_ModelQC.txt",config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T) 
   cat(sprintf(">> WRITTEN\t%s\n",config$files$output))
+  
+  #(1) Minimal number of biological replicates per condition
+  cat(">> CALCULATING SAMPLE SIZE FOR FUTURE EXPERIMENTS\n" )
+  results.ss1 <- designSampleSize(data=results$fittedmodel,numSample=TRUE,desiredFC=c(1.25,2),FDR=0.05,power=0.95)
+  results.ss2 <- designSampleSize(data=results$fittedmodel,numSample=TRUE,desiredFC=c(1.25,2),FDR=0.05,power=0.9)
+  results.ss3 <- designSampleSize(data=results$fittedmodel,numSample=TRUE,desiredFC=c(1.25,2),FDR=0.05,power=0.8)
+  results.ss = rbind( results.ss1, results.ss2, results.ss3)
+  write.table(results.ss, file=gsub(".txt","_sampleSize.txt",config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T) 
+
+  #(2) Power calculation
+  cat(">> CALCULATING POWER OF EXPERIMENT\n" )
+  results.power1 <- designSampleSize(data=results$fittedmodel,numSample=3, desiredFC=c(1.25,2),FDR=0.05,power=TRUE)
+  results.power2 <- designSampleSize(data=results$fittedmodel,numSample=2, desiredFC=c(1.25,2),FDR=0.05,power=TRUE)
+  results.power <- rbind(results.power1, results.power2)
+  write.table(results.power, file=gsub(".txt","_experimentPower.txt",config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T) 
+  
   return(results)
 }
 
