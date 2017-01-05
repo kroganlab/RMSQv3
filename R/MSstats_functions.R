@@ -164,13 +164,20 @@ dataToMSSFormat = function(d){
 }
 
 samplePeptideBarplot = function(data_f, config){
-#   pdf(gsub('.txt','-peptidecounts.pdf',config$files$output), width =8, height=10)
+  # set up data into ggplot compatible format
   data_f = data.table(data_f, labels=paste(data_f$RawFile, data_f$Condition, data_f$BioReplicate))
   data_f = data_f[with(data_f, order(labels,decreasing = T)),]
+  
+  # plot the peptide counts for all the samples TOGETHER
   p = ggplot(data = data_f, aes(x=labels))
   p = p + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1, family = 'mono')) + ggtitle('Unique peptides per run\n after filtering') + coord_flip()
-#   dev.off()  
   ggsave(filename = gsub('.txt','-peptidecounts.pdf',config$files$output), plot=p, width = 8, height = 10)
+  
+  # plot the peptide counts for all the samples PER BAIT
+  p = ggplot(data = data_f, aes(x=BioReplicate))
+  p = p + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1, family = 'mono')) + ggtitle('Unique peptides per run\n after filtering') + facet_wrap(~Condition, scales='free')
+  ggsave(filename = gsub('.txt','-peptidecounts-perBait.pdf',config$files$output), plot=p, width = 8, height = 10)
+  
 }
 
 sampleCorrelationHeatmap <- function (data_w, keys, config) {
