@@ -397,7 +397,7 @@ MQutil.simplify = function(input_file, output_file){
   write.table(output, file=output_file, sep='\t', quote=F, row.names=F, col.names=T, eol = '\n')
 }
 
-MQutil.MaxQToSaint = function(data_file, keys_file, ref_proteome_file, quant_variable='spectral_count'){
+MQutil.MaxQToSaint = function(data_file, keys_file, ref_proteome_file, quant_variable='spectral_count', output_file){
   cat(">> CONVERTING TO SAINT FORMAT\n")
   
   data = fread(data_file, integer64 = 'double')
@@ -465,10 +465,16 @@ MQutil.MaxQToSaint = function(data_file, keys_file, ref_proteome_file, quant_var
     saint_preys[is.na(saint_preys$lengths),]$lengths=median(saint_preys$lengths,na.rm = T)
   }
   
+  
+  # Check if output directory exists and create it if not.
+  if(!dir.exists(dirname(output_file))){
+    dir.create(dirname(output_file), recursive=T)
+  }
+  
   ## WRITE
-  write.table(saint_baits,file = gsub('.txt','-saint-baits.txt',keys_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
-  write.table(saint_preys,file = gsub('.txt','-saint-preys.txt',keys_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
-  write.table(saint_interactions,file = gsub('.txt','-saint-interactions.txt',keys_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
+  write.table(saint_baits,file = gsub('.txt','-saint-baits.txt',output_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
+  write.table(saint_preys,file = gsub('.txt','-saint-preys.txt',output_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
+  write.table(saint_interactions,file = gsub('.txt','-saint-interactions.txt',output_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
 }
 
 MQutil.dataPlots = function(input_file, output_file){
@@ -575,6 +581,7 @@ MQutil.MISTformat = function(input_file, keys_file, output_file, species="HUMAN"
       Uniprot = rbind(Uniprot, tmp)  
     }
   }
+  cat('\tANNOTATING RESULTS...\n')
   results_annotated = merge(data_sel, Uniprot, all.x=T, by.x='ms_uniprot_ac',by.y='Entry')
   
   # Adding the Mass column: it is required for MIST for preprocessing!
@@ -582,11 +589,16 @@ MQutil.MISTformat = function(input_file, keys_file, output_file, species="HUMAN"
   # weight of an amino acid: 110Da
   results_annotated$Mass <- results_annotated$Length*110
   
+  # create output directory if it doesnt exist
+  if(!dir.exists(dirname(output_file))){
+    dir.create(dirname(output_file), recursive =T)
+  }
+  
   write.table(results_annotated, file=output_file, eol='\n', sep='\t', quote=F, row.names=F, col.names=T)
   cat('\nMIST FILES CREATED! Have a nice day :)\n')
   
   keysout <- subset(keys, select = c(RawFile, Condition))
-  keysname <- 'keys_mist.txt'
+  keysname <- gsub(".txt",'_keys.txt', output_file)
   write.table(keysout, file=keysname, eol = '\n', sep = '\t', quote = F, row.names = F, col.names = F)
   cat('MIST keys FILE ALSO CREATED. Truly enjoy your day ;-)\n\n')
 }
@@ -890,7 +902,7 @@ main <- function(opt){
     }else if(opt$command == 'simplify'){
       MQutil.simplify(input_file = opt$files, output_file = opt$output)
     }else if(opt$command == 'saint-format'){
-      MQutil.MaxQToSaint(data_file = opt$files, keys_file =  opt$keys, ref_proteome_file = opt$proteome, quant_variable = opt$identifier_column)
+      MQutil.MaxQToSaint(data_file = opt$files, keys_file =  opt$keys, ref_proteome_file = opt$proteome, quant_variable = opt$identifier_column, output_file = opt$output)
     }else if(opt$command == 'data-plots'){
       MQutil.dataPlots(input_file = opt$files, output_file = opt$output)
     }else if(opt$command == 'spectral-counts'){
