@@ -175,7 +175,7 @@ samplePeptideBarplot = function(data_f, config){
   
   # plot the peptide counts for all the samples PER BAIT
   p = ggplot(data = data_f, aes(x=BioReplicate))
-  p = p + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1, family = 'mono')) + ggtitle('Unique peptides per run\n after filtering') + facet_wrap(~Condition, scales='free')
+  p = p + geom_bar() + theme(axis.text.x = element_text(angle = 90, hjust = 1, family = 'mono')) + ggtitle('Unique peptides per run\n after filtering') + facet_wrap(~Condition, scales='free')  + theme(axis.text.x = element_text(angle = 45, hjust = 1))
   ggsave(filename = gsub('.txt','-peptidecounts-perBait.pdf',config$files$output), plot=p, width = 8, height = 10)
   
 }
