@@ -156,7 +156,7 @@ Arguments:
 -c saint-format
 -f evidence_file_path
 -k keys_file_path
--o output_file_directory
+-o output_file_path
 -p reference_proteome
 -i identifier_column (sepctral_count|ms1)
 ```
