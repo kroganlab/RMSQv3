@@ -294,7 +294,7 @@ writeExtras = function(results, config){
   if(config$output_extras$heatmap){
     ## plot heat map for all contrasts
     cat(">>   PLOTTING HEATMAP FOR ALL CONTRASTS\n")
-    heat_labels = prettyPrintHeatmapLabels(uniprot_acs=sign_hits$Protein,uniprot_ids=sign_hits$name, gene_names=sign_hits$gene_name)
+    heat_labels = prettyPrintHeatmapLabels(uniprot_acs=sign_hits$Protein,uniprot_ids=sign_hits$name, gene_names=sign_hits$Gene.names)
     heat_data_w = plotHeat(mss_F = sign_hits, out_file =  gsub('.txt','-sign.pdf',config$files$output), names=heat_labels, cluster_cols=config$output_extras$heatmap_cluster_cols, display = config$output_extras$heatmap_display)  
   }
   
