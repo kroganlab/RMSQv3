@@ -38,7 +38,7 @@ output_extras :
   msstats_output :
   annotate : 1 # 1|0 whether to annotate the proteins in the results or not
   species : HUMAN  # can use multiple species, but separate with a "-" eg. HUMAN-MOUSE-HIV-...
-  annotation_dir : /Users/djm75/github/kroganlab/source/db/
+  annotation_dir : /path/to/the/files
   comparisons : all # or any grep expression that returns a subset of the contrasts file
   LFC : -2 2
   FDR : 0.05
