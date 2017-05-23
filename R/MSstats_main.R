@@ -317,6 +317,11 @@ main <- function(opt){
     #data = fread(config$files$data, stringsAsFactors=F, integer64 = 'double')  # Found more bugs in fread. Not worth the compormise in data integrity just to save time reading in data
     data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
     data <- data.table(data)
+    # Remove white Proteins ids
+    if(any(data$Proteins == "")){
+      cat (">> REMOVING EMPTY PROTEIN LABELS\n")
+      data <- data[-which(data$Proteins == ""),]
+    }
     setnames(data, colnames(data),gsub('\\s','.',colnames(data)))
     keys = read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
     keys <- data.table(keys)
@@ -325,8 +330,8 @@ main <- function(opt){
     ## currently we leave this in because the MSstats discinction on labeltype doesn't work 
     ## see ISSUES https://github.com/everschueren/RMSQ/issues/1
     
-    tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found\n'))
-    tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found\n'))
+    tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the evidence file\n'))
+    tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the KEYS file (and it should crash)\n'))
     
     cat('\tVERIFYING DATA AND KEYS\n')
     if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
