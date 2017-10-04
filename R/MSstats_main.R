@@ -152,6 +152,7 @@ runMSstats = function(dmss, contrasts, config){
   
   # protein sample/group quantification 
   write.table(quantification(mssquant), file=gsub('.txt','-mss-sampleQuant.txt',config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
+  write.table(quantification(mssquant,type="Group"), file=gsub('.txt','-mss-groupQuant.txt',config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
   
   cat(sprintf('\tFITTING CONTRASTS:\t%s\n',paste(rownames(contrasts),collapse=',')))
   write.table(mssquant$ProcessedData, file=gsub('.txt','-mss-normalized.txt',config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
