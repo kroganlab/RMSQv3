@@ -6,13 +6,18 @@ RMSQ for MSstats v3.3.10
 #### Installing MSStats
 ```
 # step 1: install dependency packages
-install.packages(c("gplots","lme4","ggplot2","ggrepel","reshape","reshape2","data.table","Rcpp","survival"))
+install.packages(c("gplots","lme4","ggplot2","ggrepel","reshape","reshape2","data.table","Rcpp","survival", "getopt","yaml"))
 
-source("http://bioconductor.org/biocLite.R")
+# Install package from bioconductor
+source("https://bioconductor.org/biocLite.R")
+biocLite(c("limma","marray","preprocessCore","MSnbase","biomaRt", ))
 
-biocLite(c("limma","marray","preprocessCore","MSnbase"))
+# step 2: Install MSstats
+# - Recommended option: from bioconductor like this:
+source("https://bioconductor.org/biocLite.R")
+biocLite("MSstats")
 
-# step 2: install MSstats - Use the version available in this repository `MSstats_3.3.10.tar.gz`. Install it like this:
+# - Alternatively, use the version available in this repository `MSstats_3.3.10.tar.gz`. Install it like this:
 install.packages(pkgs="MSstats_3.3.10.tar.gz",repos=NULL,type="source")
 
 # step 3: load the library of MSstats
@@ -31,15 +36,18 @@ MSstats_main.R -c configuration_file.yaml
 Check the folder `test` for a sample configuration file
 
 ### `MaxQ_utilities.R`
+
 These functions are designed to work with MaxQuant evidence files. The functions include a wide variety of options listed below.
 
 The `Arguments` section lists the arguments needed for each function. The arcuments (proceeded by the short flag alias -x) should be entered in the same line of the terminal, separated by spaces.
 
 
 ### Typical workflows
+
 The RMSQ pipeline was designed to run in a certain order. The following is the propper order to perform the analysis with RMSQ for SILAC, PTM, and AMPS datasets.
 
 ##### PTM analysis
+
 0. MaxQ_utilities -> convert-silac (for SILAC data only)
 1. MaxQ_utilities -> convert-sites
 2. MSstats
@@ -48,6 +56,7 @@ The RMSQ pipeline was designed to run in a certain order. The following is the p
 5. MaxQ_utilities -> annotate
 
 ##### APMS Global Analysis
+
 1. MSstats
 2. MaxQ_utilities -> results-wide
 4. MaxQ_utilities -> annotate
@@ -56,7 +65,9 @@ The RMSQ pipeline was designed to run in a certain order. The following is the p
 
 
 ### Functions
+
 #####concat  
+
 #####convert-silac  
 Converts SILAC data to a format compatible with MSstats. 
 
@@ -68,7 +79,8 @@ Arguments:
 ```
 
 
-#####keys  
+#####keys
+
 #####convert-sites
 This function is a preprocessing function that is used with PTM data. If you want to run a site specific analysis, before running  MSStats on a UB/PH/AC set, you need to convert the evidence file into a format that MSStats will be able to diffentiate the sites with. This outputs a new file that should be used as the input file for your MSStats group conparison analysis.
 
@@ -82,6 +94,7 @@ Arguments:
 ```
 
 ##### annotate
+
 Annotates the proteins in the results or results-wide files after they've been through the MSStats pipeline. Multiple species can be searched at once, simply separate them by a "-". (eg. human-mouse)
 
 ```
@@ -94,6 +107,7 @@ Arguments:
 ```
 
 ##### results-wide
+
 Converts the normal MSStats output file into "wide" format where each row represents a protein's results, and each column represents the comparison made by MSStats. The fold change and p-value of each comparison will be it's own column.
 
 ```
@@ -104,6 +118,7 @@ Arguments:
 ```
 
 ##### mapback-sites
+
 Used with PTM datasets. Map back the sites to correct proteins after MSStats analysis. This file is created previously when running the `conver-sites` function.
 
 ```
@@ -115,6 +130,7 @@ Arguments:
 ```
 
 ##### heatmap
+
 Outputs a heatmap of the MSStats results created using the log2 fold changes.
 
 ```
@@ -128,6 +144,7 @@ Arguments:
 ```
 
 ##### replicateplots
+
 Outputs a replicate plots based on a user provied file containing the replicates to be compared. Values are based on the log2 value of the maximum intensities per modified sequence. The "replicate file" should describe which replicates of which conditions should be compared against eachother. Each row represents a replicate plot to be created. The file should be structured using the following format and column names:
 
 | condition1 | rep1_1 | rep1_2 | condition2 | rep2_1 | rep2_2 |
@@ -148,7 +165,9 @@ Arguments:
 ```
 
 ##### simplify
+
 ##### saint-format
+
 Converts the MaxQuant evidence file to the 3 required files for SAINTexpress. One can choose to either use the `spectral counts` or the `intensities` for the analysis. 
 
 ```
@@ -162,7 +181,9 @@ Arguments:
 ```
 
 ##### data-plots
+
 ##### spectral-counts
+
 Outputs the spectral counts from the MaxQuant evidence file. 
 
 ```
@@ -174,6 +195,7 @@ Arguments:
 ```
 
 ##### mist
+
 Converts MaxQuant evidence file into a file format compatible with the MiST pipeline using `MS/MS.Count`. Note that this is the MiST *data* file, and that an additional *keys* file will have to be constructed before running MiST. Multiple species can be searched at once, simply separate them by a "-". (eg. `HUMAN-MOUSE`)
 
 ```
@@ -187,6 +209,7 @@ Arguments:
 ```
 
 ##### mistint
+
 Very similar to the `mist`, but instead of using `MS/MS.Count`, uses `Intensity` values. Converts MaxQuant evidence file into a file format compatible with the MiST pipeline. Note that this is the MiST *data* file, and that an additional *keys* file will have to be constructed before running MiST. Multiple species can be searched at once, simply separate them by a "-". (eg. `HUMAN-MOUSE`)
 
 ```
@@ -201,6 +224,7 @@ Arguments:
 
 
 ##### samplequant
+
 Aggregates the normalized abundance and replicate data from the samples. Uses the MSstat output file  `...mss-sampleQuant.txt` for the aggregations, and is applied directly to the MSstats results in ***wide*** format. The resulting file will have "abundance" appended to the end of the file name.
 
 ```
