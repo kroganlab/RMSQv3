@@ -23,3 +23,17 @@ vignettes/*.pdf
 .RDataTmp
 
 *.log
+
+*.RData
+
+*.Rd
+
+*.pdf
+
+test/LabelFree-ub/data/LabelFree-ub-evidence.txt
+
+test/LabelFree-ub/data/LabelFree-ub-evidence-keys.txt
+
+test/LabelFree-ub/data/LabelFree-ub-evidence-contrasts.txt
+
+test/LabelFree-ub/config.yml

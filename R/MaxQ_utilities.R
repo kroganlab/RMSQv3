@@ -536,6 +536,8 @@ MQutil.MISTformat = function(input_file, keys_file, output_file, species="HUMAN"
   tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file in keys not found: trying Raw file instead\n'))
   tryCatch(setnames(data,'MS/MS Count','ms_spectral_counts'), error=function(e) cat('MS/MS Count column not found in evidence file: trying MS.MS.Count instead\n'))
   tryCatch(setnames(data,'MS.MS.Count','ms_spectral_counts'), error=function(e) cat('MS.MS.Count column not found in evidence file: trying MS/MS Count instead\n'))
+  tryCatch(setnames(data,'MS.MS.count','ms_spectral_counts'), error=function(e) cat('MS.MS.count column not found in evidence file: trying MS/MS Count instead\n'))
+  
   
   cat('\t\nVERIFYING DATA AND KEYS\n')
   if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
