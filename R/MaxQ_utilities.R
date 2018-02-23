@@ -1,4 +1,4 @@
-#! /usr/bin/Rscript --vanilla
+#! /usr/bin/env Rscript --vanilla
 
 suppressMessages(library(data.table))
 suppressWarnings(library(seqinr))

@@ -1,4 +1,5 @@
-#! /usr/bin/Rscript --vanilla --default-packages=utils
+#! /usr/bin/env Rscript --vanilla
+
 suppressMessages(library(grDevices))
 suppressMessages(library(stats))
 suppressMessages(library(graphics))
