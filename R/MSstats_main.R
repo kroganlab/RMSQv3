@@ -1,4 +1,4 @@
-#! /usr/bin/env Rscript --vanilla
+#! /usr/bin/env Rscript
 
 ###############################
 ## FILE AND LIB LOADING #######
@@ -323,7 +323,7 @@ main <- function(opt){
       cat (">> REMOVING EMPTY PROTEIN LABELS\n")
       data <- data[-which(data$Proteins == ""),]
     }
-    setnames(data, colnames(data),gsub('\\s','.',colnames(data)))
+    setnames(data, colnames(data), gsub('\\s','.',colnames(data)))
     keys = read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
     keys <- data.table(keys)
     
@@ -350,6 +350,13 @@ main <- function(opt){
     ## FILTERING : handles Protein Groups and Modifications
     if(config$filters$enabled) data_f = filterData(data, config) else data_f=data
     
+    ## AGGREGATION of FRACTIONS
+    if(config$aggregation$enabled){
+      cat("\t>>Protein Fractions: aggregating on the", config$aggregation$aggregate_fun,"\n")
+      data_f <- aggregate(Intensity~Modified.sequence+Charge+Proteins+IsotopeLabelType+RawFile+Condition+BioReplicate+Run, data=data_f, FUN = config$aggregation$aggregate_fun)
+      data_f <- data.table(data_f)
+    } 
+    
     ## FORMATTING IN WIDE FORMAT FOR NORMALIZATION PURPOSES
     if(config$files$sequence_type == 'modified') castFun = castMaxQToWidePTM else castFun = castMaxQToWide
     data_w = castFun(data_f)
@@ -360,13 +367,6 @@ main <- function(opt){
       sampleCorrelationHeatmap(data_w = data_w, keys = keys_in_data, config = config) 
       samplePeptideBarplot(data_f, config)
     }
-    
-    ## AGGREGATION
-    if(config$aggregation$enabled){
-      res = aggregateData(data_w, keys, config)
-      data_w=res$data_w_agg
-      keys=res$keys_agg
-    } 
     
     ## NORMALIZATION -- we normalize with MSstats now
     #if(config$normalization$enabled) data_fn = normalizeData(data_w, config) else data_fn=data_w
