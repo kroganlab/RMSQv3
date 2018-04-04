@@ -181,11 +181,25 @@ runMSstats = function(dmss, contrasts, config){
 }
 
 
-convertDataLongToMss = function(data_w, keys, config){
+convertDataLongToMss = function(data_w, keys, config, fractions){
   cat(">> CONVERTING DATA TO MSSTATS FORMAT\n")
   data_l = meltMaxQToLong(data_w, na.rm = F)
   data_lk = mergeMaxQDataWithKeys(data_l, keys, by=c('RawFile','IsotopeLabelType'))
   dmss = dataToMSSFormat(data_lk)
+
+  # PROTEIN FRACTIONS
+  if(fractions){
+    cat("\t>>Processing Fractions\n")
+    # Aggregation won't work with the NA columns, that's why we select this columns
+    predmss <- dmss[c( "ProteinName", "PeptideSequence", "ProductCharge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+    dmss2 <- aggregate(data = predmss, Intensity~ProteinName+PeptideSequence+ProductCharge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = sum)
+    # After the data has been aggregated, then we add the columns
+    dmss2$PrecursorCharge <- NA 
+    dmss2$FragmentIon <- NA
+    # And re-sort it as msstats likes it
+    dmss <- dmss2[c("ProteinName", "PeptideSequence", "PrecursorCharge", "FragmentIon", "ProductCharge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+  }
+  
   ## sanity check for zero's
   if(nrow(dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]) > 0){
     dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]$Intensity = NA
@@ -350,13 +364,6 @@ main <- function(opt){
     ## FILTERING : handles Protein Groups and Modifications
     if(config$filters$enabled) data_f = filterData(data, config) else data_f=data
     
-    ## AGGREGATION of FRACTIONS
-    if(config$aggregation$enabled){
-      cat("\t>>Protein Fractions: aggregating on the", config$aggregation$aggregate_fun,"\n")
-      data_f <- aggregate(Intensity~Modified.sequence+Charge+Proteins+IsotopeLabelType+RawFile+Condition+BioReplicate+Run, data=data_f, FUN = config$aggregation$aggregate_fun)
-      data_f <- data.table(data_f)
-    } 
-    
     ## FORMATTING IN WIDE FORMAT FOR NORMALIZATION PURPOSES
     if(config$files$sequence_type == 'modified') castFun = castMaxQToWidePTM else castFun = castMaxQToWide
     data_w = castFun(data_f)
@@ -377,7 +384,7 @@ main <- function(opt){
   if(config$msstats$enabled){
     
     if(is.null(config$msstats$msstats_input)){
-      dmss = data.table(convertDataLongToMss(data_w, keys, config))
+      dmss = data.table(convertDataLongToMss(data_w, keys, config, config$aggregation$enabled))
       
       ## make sure there are no doubles !!
       ## doubles could arise when protein groups are being kept and the same peptide is assigned to a unique Protein. Not sure how this is possible but it seems to be like this in maxquant output. A possible explanation is that these peptides have different retention times (needs to be looked into)
