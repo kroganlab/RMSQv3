@@ -3,14 +3,16 @@ RMSQv3
 
 RMSQ for MSstats v3.3.10
 
+
 #### Installing MSStats
+
 ```
 # step 1: install dependency packages
-install.packages(c("gplots","lme4","ggplot2","ggrepel","reshape","reshape2","data.table","Rcpp","survival", "getopt","yaml"))
+install.packages(c("gplots","lme4","ggplot2","ggrepel","reshape","reshape2","data.table","Rcpp","survival", "getopt","yaml", "pheatmap"))
 
 # Install package from bioconductor
 source("https://bioconductor.org/biocLite.R")
-biocLite(c("limma","marray","preprocessCore","MSnbase","biomaRt", ))
+biocLite(c("limma","marray","preprocessCore","MSnbase","biomaRt"))
 
 # step 2: Install MSstats
 # - Recommended option: from bioconductor like this:
