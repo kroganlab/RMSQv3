@@ -18,13 +18,49 @@ theme_set(theme_bw(base_size = 15, base_family="Helvetica"))
 
 #' @title Generate the contrast matrix required by MSstats from a txt file
 #' @description It simplifies the process of creating the contrast file
-#' @param 
+#' @param contrast_file The text filepath of contrasts
 #' @keywords 
 #' writeContrast()
 #' @export
 writeContrast <- function(contrast_file) {
-  input_contrasts <- scan(contrast_file)
+  input_contrasts <- trimws(readLines(contrast_file))
+  # validate the input
+  valid <- TRUE
+  accepted_chars <- c(LETTERS, letters, 0:9, '-','_')
+  for (x in input_contrasts) {
+    characs <- unlist(strsplit(x, split=''))
+    not_allowed_count <- length(which(!(characs %in% accepted_chars)))
+    if (not_allowed_count > 0) {
+      valid <- FALSE
+      cat(paste(x, "is not a valid input"))
+      break
+    }
+    
+    dash_count <- length(which(characs == '-'))
+    if (dash_count != 1) {
+      valid <- FALSE
+      cat(paste(x, "needs to contain exactly 1 '-'"))
+      break    
+    }
+  }
   
+  if (valid) {
+    mat <- t(as.data.frame(strsplit(input_contrasts, split = '-')))
+    rownames(mat) <- NULL
+    conds <- sort(unique(c(mat[,1], mat[,2])))
+    contrast_matrix <- matrix(0, nrow = nrow(mat), ncol = length(conds))
+    colnames(contrast_matrix) <- conds
+    rownames(contrast_matrix) <- input_contrasts
+    
+    for (i in 1:nrow(mat)) {
+      cond1 <- mat[i,1]
+      cond2 <- mat[i,2]
+      contrast_matrix[i, cond1] <- 1
+      contrast_matrix[i, cond2] <- -1
+    }
+    return (contrast_matrix)
+  }
+  return (NA)
 }
 
 
