@@ -16,6 +16,15 @@ theme_set(theme_bw(base_size = 15, base_family="Helvetica"))
 ############
 ## FUNCTIONS
 
+#' @title Generate the contrast matrix required by MSstats from a txt file
+#' @description It simplifies the process of creating the contrast file
+#' @param 
+#' @keywords 
+#' writeContrast()
+#' @export
+
+
+
 #' @title Read in Evidence File
 #' @description Read in a MaxQuant searched Evidence file using data.table. This function propperly classes each column and so fread doesn't have to guess.
 #' @param evidence_file The filepath to the MaxQuant searched data (evidence) file (txt tab delimited file).
