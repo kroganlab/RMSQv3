@@ -22,7 +22,10 @@ theme_set(theme_bw(base_size = 15, base_family="Helvetica"))
 #' @keywords 
 #' writeContrast()
 #' @export
-
+writeContrast <- function(contrast_file) {
+  input_contrasts <- scan(contrast_file)
+  
+}
 
 
 #' @title Read in Evidence File
