@@ -23,7 +23,18 @@ theme_set(theme_bw(base_size = 15, base_family="Helvetica"))
 #' writeContrast()
 #' @export
 writeContrast <- function(contrast_file) {
-  input_contrasts <- trimws(readLines(contrast_file))
+  input_contrasts <- readLines(contrast_file, warn=F)
+  
+  # check if contrast_file is old-format (i.e the contrast_file is a matrix)
+  headers <- unlist(strsplit(input_contrasts[1], split = "\t"))
+  if (length(headers)>1) {
+    newinput_contrasts <- c()
+    for (i in 2:length(input_contrasts)){
+      newinput_contrasts <- c(newinput_contrasts, unlist(strsplit(input_contrasts[i], split = "\t"))[1])
+    }
+    input_contrasts <- newinput_contrasts
+  }
+  
   # validate the input
   valid <- TRUE
   accepted_chars <- c(LETTERS, letters, 0:9, '-','_')
