@@ -411,7 +411,8 @@ main <- function(opt){
     }
     
     # Read in contrasts file
-    contrasts = read.delim(config$files$contrasts, stringsAsFactors=F)
+    # contrasts = read.delim(config$files$contrasts, stringsAsFactors=F)
+    contrasts <- writeContrast(config$files$contrasts)
     # make sure the column names are in alphabetical order before continuing
     contrasts = as.matrix( contrasts[,order(dimnames(contrasts)[[2]], decreasing=F)] )
     results = runMSstats(dmss, contrasts, config)
