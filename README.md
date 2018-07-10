@@ -4,7 +4,7 @@ RMSQv3
 RMSQ for MSstats v3.3.10
 
 
-#### Installing MSStats
+# Installing MSStats
 
 ```
 # step 1: install dependency packages
@@ -29,13 +29,69 @@ library(MSstats)
 ?MSstats
 ```
 
-### Running MSstats v3, `MSstats_main.R`
+## Input files
+
+3 tab delimited files are required to run RMSQv3:
+
+### `evidence.txt`
+
+The output of the quantitative proteomics software package `MaxQuant`. 
+It combines all the information about the identified peptides and normally 
+is the only file required for processing the results.
+
+### `keys.txt`
+
+It contains the experimental design. 
+This file will be merged with the `evidence.txt`
+file (i.e., the output of MaxQuant with the peptides identified) through the 
+"Raw.file" column. 
+Each raw file corresponds to a unique individual technical replicate / 
+biological replicate / Condition / Run.
+
+Example (see `test/example-keys.txt`)
+
+**RawFile**|**IsotopeLabelType**|**Condition**|**BioReplicate**|**Run**
+:-----:|:-----:|:-----:|:-----:|:-----:
+FU20170922-17|L|H1N1\_03H|H1N1\_03H-1|9
+FU20170922-19|L|H1N1\_03H|H1N1\_03H-2|10
+FU20170922-21|L|H1N1\_06H|H1N1\_06H-1|11
+FU20170922-23|L|H1N1\_06H|H1N1\_06H-2|12
+FU20170922-35|L|H1N1\_12H|H1N1\_12H-1|13
+FU20170922-37|L|H1N1\_12H|H1N1\_12H-2|14
+FU20170922-39|L|H1N1\_18H|H1N1\_18H-1|15
+FU20170922-41|L|H1N1\_18H|H1N1\_18H-2|16
+FU20170922-01|L|MOCK\_03H|MOCK\_03H-1|1
+FU20170922-03|L|MOCK\_03H|MOCK\_03H-2|2
+FU20170922-05|L|MOCK\_06H|MOCK\_06H-1|3
+FU20170922-07|L|MOCK\_06H|MOCK\_06H-2|4
+FU20170922-09|L|MOCK\_12H|MOCK\_12H-1|5
+FU20170922-11|L|MOCK\_12H|MOCK\_12H-2|6
+FU20170922-13|L|MOCK\_18H|MOCK\_18H-1|7
+FU20170922-15|L|MOCK\_18H|MOCK\_18H-2|8
+
+### `contrast.txt`
+
+The comparisons between conditions that we want to quantified.
+
+Example (see `test/example-contrast.txt`)
+
+```
+H1N1_03H-MOCK_03H
+H1N1_06H-MOCK_06H
+H1N1_12H-MOCK_12H
+H1N1_18H-MOCK_18H
+```
+
+
+## Running MSstats v3
+
+### `MSstats_main.R`
 
 ```
 MSstats_main.R -c configuration_file.yaml
 ```
 
-Check the folder `test` for a sample configuration file
+Check the folder `test` for a sample configuration file depending on the experiment.
 
 ### `MaxQ_utilities.R`
 
@@ -44,7 +100,7 @@ These functions are designed to work with MaxQuant evidence files. The functions
 The `Arguments` section lists the arguments needed for each function. The arcuments (proceeded by the short flag alias -x) should be entered in the same line of the terminal, separated by spaces.
 
 
-### Typical workflows
+## Typical workflows
 
 The RMSQ pipeline was designed to run in a certain order. The following is the propper order to perform the analysis with RMSQ for SILAC, PTM, and AMPS datasets.
 
