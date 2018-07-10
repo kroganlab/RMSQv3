@@ -101,7 +101,8 @@ runMSstats = function(dmss, contrasts, config){
   if(grepl('before', config$msstats$profilePlots)){
     mssquant = dataProcess(raw = dmss, 
                            normalization=F,
-                           betweenRunInterferenceScore = config$msstats$interference,
+                           #Interference has been depracated, but it was never used anyway
+                           # betweenRunInterferenceScore = config$msstats$interference, 
                            fillIncompleteRows = T,
                            summaryMethod = config$msstats$summaryMethod,
                            censoredInt = config$msstats$censoredInt, 
@@ -119,7 +120,8 @@ runMSstats = function(dmss, contrasts, config){
     mssquant = dataProcess(raw = dmss, 
                            normalization=config$msstats$normalization_method,
                            nameStandards=normalization_refs,
-                           betweenRunInterferenceScore = config$msstats$interference,
+                           #Interference has been depracated, but it was never used anyway
+                           # betweenRunInterferenceScore = config$msstats$interference, 
                            fillIncompleteRows = T,
                            summaryMethod = config$msstats$summaryMethod,
                            censoredInt = config$msstats$censoredInt, 
@@ -131,7 +133,8 @@ runMSstats = function(dmss, contrasts, config){
     #mssquant = dataProcess(dmss, normalization=config$msstats$normalization_method , fillIncompleteRows = F, betweenRunInterferenceScore = F)
     mssquant = dataProcess(raw = dmss, 
                            normalization=config$msstats$normalization_method,
-                           betweenRunInterferenceScore = config$msstats$interference,
+                           #Interference has been depracated, but it was never used anyway
+                           # betweenRunInterferenceScore = config$msstats$interference, 
                            fillIncompleteRows = T,
                            summaryMethod = config$msstats$summaryMethod,
                            censoredInt = config$msstats$censoredInt, 
