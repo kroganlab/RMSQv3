@@ -28,7 +28,6 @@ msstats :
   MBimpute : 1 # only for summaryMethod="TMP" and censoredInt='NA' or '0'. TRUE (default) imputes 'NA' or '0' (depending on censoredInt option) by Accelated failure model. FALSE uses the values assigned by cutoffCensored.
   feature_subset: all # all|highQuality  : highQuality seems to be buggy right now
   #missing_action : impute # impute, nointeraction, remove (hidden: impute-conditions, impute-byfeature)
-  interference : 0 # 0/1 interference is detected by a between-run-interference score. TRUE means the scores are generated automatically and stored in a .csv file. FALSE(default) means no scores are generated.
   scopeOfTechReplication : restricted # expanded, restricted
   scopeOfBioReplication : restricted # expanded, restricted
   equalFeatureVar : 1 # 0/1
