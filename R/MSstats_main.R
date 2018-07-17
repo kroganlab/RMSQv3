@@ -24,7 +24,7 @@ if(length(scriptPath)==0){
 #########################
 ## MAIN FUNCTIONS #######
 
-filterData = function(data, config){
+filterData <- function(data, config){
   cat(">> FILTERING\n")
   if(config$filters$protein_groups == 'remove'){
     cat("\tPROTEIN GROUPS\tREMOVE\n")
@@ -51,7 +51,7 @@ filterData = function(data, config){
   return(data_f)
 }
 
-aggregateData = function(data_w, keys, config, castFun){
+aggregateData <- function(data_w, keys, config, castFun){
   cat(">>AGGREGATING TECHNICAL REPEATS\n")
   ##  we need to convert to long format for more easy aggregation
   data_l = meltMaxQToLong(data_w, na.rm = T)
@@ -70,7 +70,7 @@ aggregateData = function(data_w, keys, config, castFun){
 }
 
 ## returns data tabel in wide format
-normalizeData = function(data_w, config){
+normalizeData <- function(data_w, config){
   cat(">> NORMALIZING\n")
 
   if(grepl('scale|quantile|cyclicloess',config$normalization$method)){
@@ -96,7 +96,7 @@ normalizeData = function(data_w, config){
   return(data_fn)
 }
 
-runMSstats = function(dmss, contrasts, config){
+runMSstats <- function(dmss, contrasts, config){
   # plot the data BEFORE normalization
   if(grepl('before', config$msstats$profilePlots)){
     mssquant = dataProcess(raw = dmss, 
@@ -184,7 +184,7 @@ runMSstats = function(dmss, contrasts, config){
 }
 
 
-convertDataLongToMss = function(data_w, keys, config, fractions){
+convertDataLongToMss <- function(data_w, keys, config, fractions){
   cat(">> CONVERTING DATA TO MSSTATS FORMAT\n")
   data_l = meltMaxQToLong(data_w, na.rm = F)
   data_lk = mergeMaxQDataWithKeys(data_l, keys, by=c('RawFile','IsotopeLabelType'))
@@ -213,7 +213,7 @@ convertDataLongToMss = function(data_w, keys, config, fractions){
 
 
 # annotate the files based on the Uniprot accession id's
-Extras.annotate = function(results, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='HUMAN'){
+Extras.annotate <- function(results, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='HUMAN'){
   cat(">> ANNOTATING\n")
   
   # remove unnamed proteins that are listed as ""
@@ -272,7 +272,7 @@ Extras.annotate = function(results, output_file=opt$output, uniprot_ac_col='Prot
 }
 
 # Annotate data, plot volcano plots, etc
-writeExtras = function(results, config){
+writeExtras <- function(results, config){
 
   if(length(results)==0 | !exists('results')){
     stop("ERROR!! NO RESULTS FOUND TO ANNOTATE!")
@@ -446,7 +446,7 @@ if ( !is.null(opt$help) ) {
 }
 
 ## TEST WORKS WITH LATEST CODE
-# opt = c(opt, config='tests/LabelFree-ub/LabelFree-ub-test.yaml')
+opt = c(opt, config='~/Box Sync/projects/sanfordBurnham/PetroskiLab/Petroski_Wolf_RFA/results/ab20180402/config-petroski-debugging.yaml')
 
 if(!exists("DEBUG")){
   cat(">> RUN MODE\n")

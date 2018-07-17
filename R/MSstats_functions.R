@@ -106,22 +106,22 @@ read_evidence_file <- function(evidence_file){
 }
 
 
-is.uniprotAc = function(identifier){
+is.uniprotAc <- function(identifier){
   grepl('[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}',identifier)
 }
 
-filterMaxqData = function(data){
+filterMaxqData <- function(data){
   data_selected = data[grep("CON__|REV__",data$Proteins, invert=T),]
   blank.idx <- which(data_selected$Proteins =="")
   if(length(blank.idx)>0)  data_selected = data_selected[-blank.idx,]
   return(data_selected)
 }
 
-explodeMaxQProteinGroups = function(data){
+explodeMaxQProteinGroups <- function(data){
   return(data)
 }
 
-removeMaxQProteinGroups = function(data){
+removeMaxQProteinGroups <- function(data){
   data_selected = data[grep(";",data$Proteins, invert=T),]
   return(data_selected)
 }
@@ -129,35 +129,35 @@ removeMaxQProteinGroups = function(data){
 ##########################
 ## MELTING AND CASTING ###
 
-naMax = function(x) {
+naMax <- function(x) {
   return(max(x,na.rm=T))
 }
 
-castMaxQToWide = function(d_long){
+castMaxQToWide <- function(d_long){
   data_w = dcast.data.table( Proteins + Sequence + Charge ~ RawFile + IsotopeLabelType, data=d_long, value.var='Intensity', fun.aggregate=sum, fill = NA)
   #setnames(data_w,2,'Sequence')
   return(data_w)
 }
 
-castMaxQToWidePTM = function(d_long){
+castMaxQToWidePTM <- function(d_long){
   data_w = dcast.data.table( Proteins + Modified.sequence + Charge ~ RawFile + IsotopeLabelType, data=d_long, value.var='Intensity', fun.aggregate=sum, fill=NA)
   setnames(data_w,2,'Sequence')
   return(data_w)
 }
 
 # eg. getIsotopeLabel('VE20130426_04_dbdbk_Light')
-getIsotopeLabel = function(str){
+getIsotopeLabel <- function(str){
   last_idx = regexpr("\\_[^\\_]*$", str)[1]
   return(substr(str,last_idx+1,nchar(str)))
 }
 
 ## eg. getFileNameWithoutLabel('VE20130426_04_dbdbk_Light')
-getFileNameWithoutLabel = function(str){
+getFileNameWithoutLabel <- function(str){
   last_idx = regexpr("\\_[^\\_]*$", str)[1]
   return(substr(str,0,last_idx-1))
 }
 
-meltMaxQToLong = function(data_w, na.rm=F){
+meltMaxQToLong <- function(data_w, na.rm=F){
   data_l = reshape2::melt(data_w, id.vars=c('Proteins','Sequence','Charge'), na.rm = na.rm)
   setnames(data_l,old=4:5,new=c('RawFile','Intensity'))
   data_l[,'IsotopeLabelType':=NA]
@@ -166,7 +166,7 @@ meltMaxQToLong = function(data_w, na.rm=F){
   return(data_l)
 }
 
-fillMissingMaxQEntries = function(data_w, perRun=F){
+fillMissingMaxQEntries <- function(data_w, perRun=F){
   mins = apply(data_w[,4:ncol(data_w),with=F],2, function(x) min(x[x>0],na.rm=T))
   for (j in (4:ncol(data_w)))
     if(perRun){
@@ -177,22 +177,22 @@ fillMissingMaxQEntries = function(data_w, perRun=F){
   return(data_w)
 }
 
-cleanMissingMaxQEntries = function(data_l){
+cleanMissingMaxQEntries <- function(data_l){
   data_l[data_l$Intensity <= 0 | is.infinite(data_l$Intensity) | is.nan(data_l$Intensity),]$Intensity=NA
   return(data_l)
 }
 
-flattenMaxQTechRepeats = function(data_l){
+flattenMaxQTechRepeats <- function(data_l){
   
 }
 
-flattenKeysTechRepeats = function(keys){
+flattenKeysTechRepeats <- function(keys){
   keys_agg = aggregate(. ~ BioReplicate, data=keys, FUN=function(x) unique(x)[1])
   keys_agg$Run = keys_agg$BioReplicate
   return(keys_agg)
 }
 
-mergeMaxQDataWithKeys = function(data, keys, by=c('RawFile')){
+mergeMaxQDataWithKeys <- function(data, keys, by=c('RawFile')){
   # Check if the number of RawFiles is the same.
   unique_data <- unique(data$RawFile)
   unique_keys <- unique(keys$RawFile)
@@ -211,7 +211,7 @@ mergeMaxQDataWithKeys = function(data, keys, by=c('RawFile')){
   return(data)
 }
 
-normalizePerCondition = function(d, NORMALIZATION_METHOD="scale"){
+normalizePerCondition <- function(d, NORMALIZATION_METHOD="scale"){
   unique_conditions = unique(d$Condition)
   d_tmp = c()
   
@@ -224,12 +224,12 @@ normalizePerCondition = function(d, NORMALIZATION_METHOD="scale"){
   d_tmp
 }
 
-na.replace = function(v,value=0) { 
+na.replace <- function(v,value=0) { 
   v[is.na(v)] = value
   return(v) 
 }
 
-myNormalizeMedianValues = function (x) {
+myNormalizeMedianValues <- function (x) {
   narrays <- NCOL(x)
   if (narrays == 1) 
     return(x)
@@ -238,7 +238,7 @@ myNormalizeMedianValues = function (x) {
   t(t(x)/cmed)
 }
 
-normalizeSingle = function(data_w, NORMALIZATION_METHOD="scale"){
+normalizeSingle <- function(data_w, NORMALIZATION_METHOD="scale"){
   
   data_part = as.matrix(data_w[,4:ncol(data_w),with=F])
   if(NORMALIZATION_METHOD=='scale'){
@@ -251,12 +251,12 @@ normalizeSingle = function(data_w, NORMALIZATION_METHOD="scale"){
   return(res_f)
 }
 
-dataToMSSFormat = function(d){
+dataToMSSFormat <- function(d){
   tmp = data.frame(ProteinName=d$Proteins, PeptideSequence=d$Sequence, PrecursorCharge=NA, FragmentIon=NA, ProductCharge=d$Charge, IsotopeLabelType=d$IsotopeLabelType, Condition=d$Condition, BioReplicate=d$BioReplicate, Run=d$Run, Intensity=d$Intensity)
-  tmp
+  return(tmp)
 }
 
-samplePeptideBarplot = function(data_f, config){
+samplePeptideBarplot <- function(data_f, config){
   # set up data into ggplot compatible format
   data_f = data.table(data_f, labels=paste(data_f$RawFile, data_f$Condition, data_f$BioReplicate))
   data_f = data_f[with(data_f, order(labels,decreasing = T)),]
@@ -290,7 +290,7 @@ sampleCorrelationHeatmap <- function (data_w, keys, config) {
   
 }
 
-plotHeat = function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_cols=F, display='log2FC'){
+plotHeat <- function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_cols=F, display='log2FC'){
   heat_data = data.frame(mss_F, names=names)
   #heat_data = mss_F[,c('uniprot_id','Label','log2FC')]
   
@@ -333,7 +333,7 @@ plotHeat = function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_c
   heat_data_w
 }
 
-significantHits = function(mss_results, labels='*', LFC=c(-2,2), FDR=0.05){
+significantHits <- function(mss_results, labels='*', LFC=c(-2,2), FDR=0.05){
   ## get subset based on labels
   selected_results = mss_results[grep(labels,mss_results$Label), ]
   cat(sprintf('\tAVAILABLE LABELS FOR HEATMAP:\t%s\n',paste(unique(mss_results$Label), collapse=',')))
@@ -343,7 +343,7 @@ significantHits = function(mss_results, labels='*', LFC=c(-2,2), FDR=0.05){
   return(significant_results)
 }
 
-logScale = function(data, format='wide', base=2){
+logScale <- function(data, format='wide', base=2){
   if(format=='wide'){
     data[,4:ncol(data)] = log(data[,4:ncol(data)], base=base)
   }else{
@@ -355,7 +355,7 @@ logScale = function(data, format='wide', base=2){
 ###################################
 ## doesnt work so far with new code
 
-peptideDistribution = function(data_l, output_file, PDF=T){
+peptideDistribution <- function(data_l, output_file, PDF=T){
   ## look at peptide distribution of all proteins
   if(PDF) pdf(output_file, width=10, height=7)
   p = ggplot(data=data_l, aes(x=Raw.file, y=Intensity))
@@ -364,7 +364,7 @@ peptideDistribution = function(data_l, output_file, PDF=T){
   if(PDF) dev.off()
 }
 
-peptideIntensityPerFile = function(ref_peptides, output_file, PDF=T){
+peptideIntensityPerFile <- function(ref_peptides, output_file, PDF=T){
   if(PDF) pdf(output_file, width=10, height=7)
   p = ggplot(data=ref_peptides, aes(x=Raw.file, y=Intensity, group=protein_id))
   print(p + geom_line(colour="grey") + 
@@ -374,7 +374,7 @@ peptideIntensityPerFile = function(ref_peptides, output_file, PDF=T){
   if(PDF) dev.off()
 }
 
-volcanoPlot = function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='', PDF=T, decimal_threshold=16){
+volcanoPlot <- function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='', PDF=T, decimal_threshold=16){
   
   # handle cases where log2FC is Inf. There are no pvalues or other information for these cases :(
   # Issues with extreme_val later if we have Inf/-Inf values.
@@ -414,7 +414,7 @@ volcanoPlot = function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='',
   if(PDF) dev.off()
 }
 
-prettyPrintHeatmapLabels = function(uniprot_acs, uniprot_ids, gene_names){
+prettyPrintHeatmapLabels <- function(uniprot_acs, uniprot_ids, gene_names){
   #uniprot_ids_trunc = gsub('([A-Z,0-9]+)_([A-Z,0-9]+)','\\1',uniprot_ids)
   #longest_id = max(nchar(uniprot_ids_trunc))
   #tmp_frame = data.frame(t=uniprot_ids_trunc, s=longest_id-nchar(uniprot_ids_trunc)+1, g=gene_names,a=uniprot_acs, stringsAsFactors=F)
@@ -425,7 +425,7 @@ prettyPrintHeatmapLabels = function(uniprot_acs, uniprot_ids, gene_names){
   return(result)
 }
 
-normalizeToReference = function(data_l_ref, ref_protein, PDF=T, output_file){
+normalizeToReference <- function(data_l_ref, ref_protein, PDF=T, output_file){
   
   data_l_ref$Intensity = log2(data_l_ref$Intensity)  
   
@@ -464,7 +464,7 @@ normalizeToReference = function(data_l_ref, ref_protein, PDF=T, output_file){
   return(data_l_ref)
 }
 
-simplifyAggregate = function(str, sep=',', numeric=F){
+simplifyAggregate <- function(str, sep=',', numeric=F){
   str_vec = unlist(str_split(str, pattern = sep))
   if(numeric){
     str_vec = sort(unique(as.numeric(str_vec)))
@@ -476,7 +476,7 @@ simplifyAggregate = function(str, sep=',', numeric=F){
   return(str_new)
 }
 
-simplifyOutput = function(input){
+simplifyOutput <- function(input){
   input$Protein = apply(input, 1, function(x) simplifyAggregate(unname(x['Protein']), sep = ';'))
   if(any(grepl('mod_sites',colnames(input)))){
     input$mod_sites = apply(input, 1, function(x) simplifyAggregate(unname(x['mod_sites'])))  
