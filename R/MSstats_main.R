@@ -96,6 +96,60 @@ normalizeData <- function(data_w, config){
   return(data_fn)
 }
 
+
+getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc){
+  cat(">> ADAPTING THE DATA TO MSSTATS FORMAT\n")
+  # SELECT THE SEQUENCE DO YOU WANT TO USE
+  if(sequence_type == 'modified'){
+    data_f <- changeColumnName(data_f, "Modified.sequence", "PeptideSequence")
+    data_f$PeptideSequence <- gsub("_", "", data_f$PeptideSequence)
+  }else{
+    data_f <- changeColumnName(data_f, "Sequence", "PeptideSequence")
+  }
+  
+  # DEAL WITH FRACTIONS
+  if( any(grepl("FractionKey", colnames(data_f))) & fraction){
+    cat(">> ---- + DEALING WITH FRACTIONS (SUM UP INTENSITIES PER FEATURE)\n")
+    predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = funfunc)
+    predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+  }else{
+    predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = median)
+    predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+  }
+  
+  # step required by MSstats to add 'NA' intensity values for those 
+  # features not found in certain bioreplicates/runs
+  # If this is not done, MSstats will still works, 
+  # but it will generate a gigantic warning
+  predmss_dc <- reshape2::dcast(data = predmss, Proteins+PeptideSequence+Charge+IsotopeLabelType~Condition+BioReplicate+Run, value.var = "Intensity")
+  predmss_melt <- reshape2::melt(data = predmss_dc, id.vars = c('Proteins', 'PeptideSequence', 'Charge', 'IsotopeLabelType'), value.name = "Intensity")
+  # And put back the condition, bioreplicate and run columns
+  predmss_melt$Condition <- gsub("(.*)(_)(.*)(_)(.*)", "\\1", predmss_melt$variable)
+  predmss_melt$BioReplicate <- gsub("(.*)(_)(.*)(_)(.*)", "\\3", predmss_melt$variable)
+  predmss_melt$Run <- gsub("(.*)(_)(.*)(_)(.*)", "\\5", predmss_melt$variable)
+  
+  # After the data has been aggregated, then we add the columns
+  predmss_melt$ProductCharge <- NA 
+  predmss_melt$FragmentIon <- NA
+  
+  # Names required by MSstats
+  predmss_melt <- changeColumnName(predmss_melt, "Proteins", "ProteinName")
+  predmss_melt <- changeColumnName(predmss_melt, "Charge", "PrecursorCharge")
+  
+  # And re-sort it as msstats likes it
+  dmss <- predmss_melt[,c("ProteinName", "PeptideSequence", "PrecursorCharge", "FragmentIon", "ProductCharge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+  
+  ## sanity check for zero's
+  if(nrow(dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]) > 0){
+    dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]$Intensity = NA
+  }
+  
+  dmss <- as.data.frame(dmss)
+  write.table(dmss, file=gsub('.txt','-mss.txt',datafile), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
+  return(dmss)  
+}
+
+
 runMSstats <- function(dmss, contrasts, config){
   # plot the data BEFORE normalization
   if(grepl('before', config$msstats$profilePlots)){
@@ -185,7 +239,9 @@ runMSstats <- function(dmss, contrasts, config){
 
 
 convertDataLongToMss <- function(data_w, keys, config, fractions){
-  cat(">> CONVERTING DATA TO MSSTATS FORMAT\n")
+  
+  fractions <- config$aggregation$enabled
+  cat(">> CONVERTING DATA TO MSSTATS FORMAT (This step might take some time. Please be patience)\n")
   data_l = meltMaxQToLong(data_w, na.rm = F)
   data_lk = mergeMaxQDataWithKeys(data_l, keys, by=c('RawFile','IsotopeLabelType'))
   dmss = dataToMSSFormat(data_lk)
@@ -332,7 +388,9 @@ main <- function(opt){
   # process MaxQuant data, link with keys, and convert for MSStats format
   if(config$data$enabled){
     cat(">> LOADING DATA\n")
-    #data = fread(config$files$data, stringsAsFactors=F, integer64 = 'double')  # Found more bugs in fread. Not worth the compormise in data integrity just to save time reading in data
+    #data = fread(config$files$data, stringsAsFactors=F, integer64 = 'double')  
+    ## Found more bugs in fread. Not worth the compormise in data integrity 
+    ## just to save time reading in data
     data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
     data <- data.table(data)
     # Remove white Proteins ids
@@ -341,7 +399,7 @@ main <- function(opt){
       data <- data[-which(data$Proteins == ""),]
     }
     setnames(data, colnames(data), gsub('\\s','.',colnames(data)))
-    keys = read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
+    keys <- read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
     keys <- data.table(keys)
     
     ## the following lines were added to integrate the Label with the Filename when using multiple labels (e.g. H/L)
@@ -367,31 +425,35 @@ main <- function(opt){
     ## FILTERING : handles Protein Groups and Modifications
     if(config$filters$enabled) data_f = filterData(data, config) else data_f=data
     
-    ## FORMATTING IN WIDE FORMAT FOR NORMALIZATION PURPOSES
+    ## FORMATTING IN WIDE FORMAT TO CREATE HEATMAPS
     if(config$files$sequence_type == 'modified') castFun = castMaxQToWidePTM else castFun = castMaxQToWide
     data_w = castFun(data_f)
     
-    ## test code for heatmap
+    ## HEATMAPS
     if(!is.null(config$files$sample_plots) && config$files$sample_plots){
       keys_in_data = keys[keys$RawFile %in% unique(data$RawFile),]
       sampleCorrelationHeatmap(data_w = data_w, keys = keys_in_data, config = config) 
       samplePeptideBarplot(data_f, config)
     }
-    
-    ## NORMALIZATION -- we normalize with MSstats now
-    #if(config$normalization$enabled) data_fn = normalizeData(data_w, config) else data_fn=data_w
-    
   }
   
   ## MSSTATS
   if(config$msstats$enabled){
     
     if(is.null(config$msstats$msstats_input)){
-      dmss = data.table(convertDataLongToMss(data_w, keys, config, config$aggregation$enabled))
+      
+      # Old option to take the df in wide format (data_w) and reconvert it to 
+      # dmss = data.table(convertDataLongToMss(data_w, keys, config, config$aggregation$enabled))
+      
+      dmss <- getMSstatsFormat(data_f, config$files$sequence_type, config$aggregation$enabled, config$files$data, config$aggregation$aggregate_fun)
       
       ## make sure there are no doubles !!
-      ## doubles could arise when protein groups are being kept and the same peptide is assigned to a unique Protein. Not sure how this is possible but it seems to be like this in maxquant output. A possible explanation is that these peptides have different retention times (needs to be looked into)
-      dmss = data.frame(dmss[,j=list(ProteinName=paste(ProteinName,collapse=';'),Intensity=median(Intensity, na.rm=T)),by=c('PeptideSequence','ProductCharge','PrecursorCharge','FragmentIon','IsotopeLabelType','Run','BioReplicate','Condition')])
+      ## doubles could arise when protein groups are being kept and the same 
+      ## peptide is assigned to a unique Protein. Not sure how this is possible 
+      ## but it seems to be like this in maxquant output. 
+      ## A possible explanation is that these peptides have different 
+      ## retention times (needs to be looked into)
+      # dmss <- data.frame(dmss[,j=list(ProteinName=paste(ProteinName,collapse=';'),Intensity=median(Intensity, na.rm=T)),by=c('PeptideSequence','ProductCharge','PrecursorCharge','FragmentIon','IsotopeLabelType','Run','BioReplicate','Condition')])
       
     }else{
       cat(sprintf("\tREADING PREPROCESSED\t%s\n", config$msstats$msstats_input)) 
@@ -446,7 +508,10 @@ if ( !is.null(opt$help) ) {
 }
 
 ## TEST WORKS WITH LATEST CODE
-opt = c(opt, config='~/Box Sync/projects/sanfordBurnham/PetroskiLab/Petroski_Wolf_RFA/results/ab20180402/config-petroski-debugging.yaml')
+## 1 Fractions
+# opt = c(opt, config='~/Box Sync/projects/sanfordBurnham/PetroskiLab/Petroski_Wolf_RFA/results/ab20180402/config-petroski-debugging.yaml')
+## 2 Abundance
+# opt = c(opt, config='~/experiments/artms/thp1_ab_h1n1/results/testing/config.yaml')
 
 if(!exists("DEBUG")){
   cat(">> RUN MODE\n")

@@ -8,7 +8,7 @@ RMSQ for MSstats v3.3.10
 
 ```
 # step 1: install dependency packages
-install.packages(c("gplots","lme4","ggplot2","ggrepel","reshape","reshape2","data.table","Rcpp","survival", "getopt","yaml", "pheatmap"))
+install.packages(c("gplots","lme4","ggplot2","ggrepel","reshape2","data.table","Rcpp","survival", "getopt","yaml", "pheatmap"))
 
 # Install package from bioconductor
 source("https://bioconductor.org/biocLite.R")
@@ -92,6 +92,56 @@ MSstats_main.R -c configuration_file.yaml
 ```
 
 Check the folder `test` for a sample configuration file depending on the experiment.
+
+##### Special case: Protein fractionation
+
+To handle protein fractionation experiments, two options need to be activated
+
+1. the keys file must contain and additional column named "FractionKey" with the information about fractionation. For example:
+
+**Raw.file**|**IsotopeLabelType**|**Condition**|**BioReplicate**|**Run**|**FractionKey**
+:-----:|:-----:|:-----:|:-----:|:-----:|:-----:
+S9524\_Fx1|L|AB|AB-1|1|1
+S9524\_Fx2|L|AB|AB-1|1|2
+S9524\_Fx3|L|AB|AB-1|1|3
+S9524\_Fx4|L|AB|AB-1|1|4
+S9524\_Fx5|L|AB|AB-1|1|5
+S9524\_Fx6|L|AB|AB-1|1|6
+S9524\_Fx7|L|AB|AB-1|1|7
+S9524\_Fx8|L|AB|AB-1|1|8
+S9524\_Fx9|L|AB|AB-1|1|9
+S9524\_Fx10|L|AB|AB-1|1|10
+S9525\_Fx1|L|AB|AB-2|2|1
+S9525\_Fx2|L|AB|AB-2|2|2
+S9525\_Fx3|L|AB|AB-2|2|3
+S9525\_Fx4|L|AB|AB-2|2|4
+S9525\_Fx5|L|AB|AB-2|2|5
+S9525\_Fx6|L|AB|AB-2|2|6
+S9525\_Fx7|L|AB|AB-2|2|7
+S9525\_Fx8|L|AB|AB-2|2|8
+S9525\_Fx9|L|AB|AB-2|2|9
+S9525\_Fx10|L|AB|AB-2|2|10
+S9526\_Fx1|L|AB|AB-3|3|1
+S9526\_Fx2|L|AB|AB-3|3|2
+S9526\_Fx3|L|AB|AB-3|3|3
+S9526\_Fx4|L|AB|AB-3|3|4
+S9526\_Fx5|L|AB|AB-3|3|5
+S9526\_Fx6|L|AB|AB-3|3|6
+S9526\_Fx7|L|AB|AB-3|3|7
+S9526\_Fx8|L|AB|AB-3|3|8
+S9526\_Fx9|L|AB|AB-3|3|9
+S9526\_Fx10|L|AB|AB-3|3|10
+
+Internally, the function `getMSstatsFormat` handles the key step 
+(just a simple `sum` aggregation)
+
+2. Enable `aggregation` in the configuration file like this:
+
+```
+aggregation: 
+  enabled : 1 # 1 for Fractions, 0 otherwise
+  aggregate_fun : sum # other options available: median, mean (not recommended)
+```
 
 ### `MaxQ_utilities.R`
 

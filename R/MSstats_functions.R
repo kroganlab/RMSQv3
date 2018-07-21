@@ -16,6 +16,25 @@ theme_set(theme_bw(base_size = 15, base_family="Helvetica"))
 ############
 ## FUNCTIONS
 
+#' @title Change a specific column name in a given data.frame
+#' @description Making easier j
+#' @param dataset the data.frame with the column name you want to change
+#' @param oldname the old column name
+#' @param neename the new name for that column
+#' @keywords rename, data.frame, columns
+#' changeColumnName()
+#' @export
+changeColumnName <- function(dataset, oldname, newname){
+
+  if( !(oldname %in% colnames(dataset)) ){
+    stop("The Column name provided <",oldname,"> was not found in the data.table provided")
+  }
+  
+  names(dataset)[grep(paste0('^',oldname,'$'), names(dataset))] <- newname
+  return(dataset)
+}
+
+
 #' @title Generate the contrast matrix required by MSstats from a txt file
 #' @description It simplifies the process of creating the contrast file
 #' @param contrast_file The text filepath of contrasts
