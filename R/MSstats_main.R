@@ -99,34 +99,47 @@ normalizeData <- function(data_w, config){
 
 getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc){
   cat(">> ADAPTING THE DATA TO MSSTATS FORMAT\n")
+  
+  # # DEBUG
+  # sequence_type <- config$files$sequence_type
+  # fraction <- config$aggregation$enabled
+  # datafile <- config$files$data
+  # funfunc <- config$aggregation$aggregate_fun
+  
   # SELECT THE SEQUENCE DO YOU WANT TO USE
   if(sequence_type == 'modified'){
     data_f <- changeColumnName(data_f, "Modified.sequence", "PeptideSequence")
     data_f$PeptideSequence <- gsub("_", "", data_f$PeptideSequence)
+    cat("------- + Selecting Sequence Type: MaxQuant 'Modified.sequence' column\n")
   }else{
     data_f <- changeColumnName(data_f, "Sequence", "PeptideSequence")
+    cat("------- + Selecting Sequence Type: MaxQuant 'Sequence' column\n")
   }
   
-  # DEAL WITH FRACTIONS
+  # DEAL WITH FRACTIONS FIRST
   if( any(grepl("FractionKey", colnames(data_f))) & fraction){
-    cat(">> ---- + DEALING WITH FRACTIONS (SUM UP INTENSITIES PER FEATURE)\n")
+    cat("------- + DEALING WITH FRACTIONS (sum up intensities per feature)\n")
     predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = funfunc)
     predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
   }else{
-    predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = median)
-    predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+    # If there are duplications, sum up
+    # predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = sum)
+    predmss <- data_f[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
   }
   
   # step required by MSstats to add 'NA' intensity values for those 
   # features not found in certain bioreplicates/runs
   # If this is not done, MSstats will still works, 
-  # but it will generate a gigantic warning
-  predmss_dc <- reshape2::dcast(data = predmss, Proteins+PeptideSequence+Charge+IsotopeLabelType~Condition+BioReplicate+Run, value.var = "Intensity")
+  # but it will generate a gigantic warning.
+  # Using dcast from data.table because it has the option "sep" that allows to 
+  # choose the 'collapse' character to use.
+  cat("------- + Adding NA values for missing values (required by MSstats)\n")
+  predmss_dc <- data.table::dcast(data = setDT(predmss), Proteins+PeptideSequence+Charge+IsotopeLabelType~Condition+BioReplicate+Run, value.var = "Intensity", sep = "___")
   predmss_melt <- reshape2::melt(data = predmss_dc, id.vars = c('Proteins', 'PeptideSequence', 'Charge', 'IsotopeLabelType'), value.name = "Intensity")
   # And put back the condition, bioreplicate and run columns
-  predmss_melt$Condition <- gsub("(.*)(_)(.*)(_)(.*)", "\\1", predmss_melt$variable)
-  predmss_melt$BioReplicate <- gsub("(.*)(_)(.*)(_)(.*)", "\\3", predmss_melt$variable)
-  predmss_melt$Run <- gsub("(.*)(_)(.*)(_)(.*)", "\\5", predmss_melt$variable)
+  predmss_melt$Condition <- gsub("(.*)(___)(.*)(___)(.*)", "\\1", predmss_melt$variable)
+  predmss_melt$BioReplicate <- gsub("(.*)(___)(.*)(___)(.*)", "\\3", predmss_melt$variable)
+  predmss_melt$Run <- gsub("(.*)(___)(.*)(___)(.*)", "\\5", predmss_melt$variable)
   
   # After the data has been aggregated, then we add the columns
   predmss_melt$ProductCharge <- NA 
@@ -145,6 +158,7 @@ getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc)
   }
   
   dmss <- as.data.frame(dmss)
+  cat("------- + Write out the MSstats input file (-mss.txt)\n\n")
   write.table(dmss, file=gsub('.txt','-mss.txt',datafile), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
   return(dmss)  
 }
@@ -388,9 +402,11 @@ main <- function(opt){
   # process MaxQuant data, link with keys, and convert for MSStats format
   if(config$data$enabled){
     cat(">> LOADING DATA\n")
-    #data = fread(config$files$data, stringsAsFactors=F, integer64 = 'double')  
-    ## Found more bugs in fread. Not worth the compormise in data integrity 
-    ## just to save time reading in data
+    ## Found more bugs in fread (issue submitted to data.table on github by
+    ## JVD but it was closed with the excuse that 'is was not reproducible'
+    ## although he provided examples) 
+    ## Not worth the compormise in data integrity just to save time 
+    ## reading in data
     data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
     data <- data.table(data)
     # Remove white Proteins ids
@@ -443,7 +459,7 @@ main <- function(opt){
     if(is.null(config$msstats$msstats_input)){
       
       # Old option to take the df in wide format (data_w) and reconvert it to 
-      # dmss = data.table(convertDataLongToMss(data_w, keys, config, config$aggregation$enabled))
+      # dmssOLD <- data.table(convertDataLongToMss(data_w, keys, config, config$aggregation$enabled))
       
       dmss <- getMSstatsFormat(data_f, config$files$sequence_type, config$aggregation$enabled, config$files$data, config$aggregation$aggregate_fun)
       
@@ -453,11 +469,11 @@ main <- function(opt){
       ## but it seems to be like this in maxquant output. 
       ## A possible explanation is that these peptides have different 
       ## retention times (needs to be looked into)
-      # dmss <- data.frame(dmss[,j=list(ProteinName=paste(ProteinName,collapse=';'),Intensity=median(Intensity, na.rm=T)),by=c('PeptideSequence','ProductCharge','PrecursorCharge','FragmentIon','IsotopeLabelType','Run','BioReplicate','Condition')])
+      ## dmss <- data.frame(dmss[,j=list(ProteinName=paste(ProteinName,collapse=';'),Intensity=median(Intensity, na.rm=T)),by=c('PeptideSequence','ProductCharge','PrecursorCharge','FragmentIon','IsotopeLabelType','Run','BioReplicate','Condition')])
       
     }else{
       cat(sprintf("\tREADING PREPROCESSED\t%s\n", config$msstats$msstats_input)) 
-      dmss = read.delim(config$msstats$msstats_input, stringsAsFactors=F, sep='\t')
+      dmss <- read.delim(config$msstats$msstats_input, stringsAsFactors=F, sep='\t')
       dmss <- data.table(dmss)
     }
     
@@ -469,7 +485,7 @@ main <- function(opt){
     }else if(config$msstats$version == 'MSstats.daily'){
       library('MSstats.daily', character.only = T) 
     }else{
-      stop( 'COULD NOT FIND MSSTATS VERSION. PLEASE MAKE SURE THERE IS A VERSION ON THIS MACHINE.') 
+      stop( '\n\nCOULD NOT FIND MSSTATS VERSION. PLEASE MAKE SURE THERE IS A VERSION ON THIS MACHINE.\n\n') 
     }
     
     # Read in contrasts file

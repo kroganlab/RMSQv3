@@ -222,7 +222,7 @@ mergeMaxQDataWithKeys <- function(data, keys, by=c('RawFile')){
     cat(sprintf("keys found: %s \t keys not in data file:\n%s\n", length(unique_keys)-length(keys_not_found), paste(keys_not_found,collapse='\t')))
     cat(sprintf("data found: %s \t data not in keys file:\n%s\n", length(unique_data)-length(data_not_found), paste(data_not_found, collapse='\t')))
   }else{
-    cat("\nCheck point: the number of RawFiles in both keys and evidences file is identical\n\n")
+    cat("\n\t>-----+ Check point: the number of RawFiles in both keys and evidences file is identical\n\n")
   }
   
   ## select only required attributes from MQ format
