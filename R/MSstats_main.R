@@ -102,9 +102,9 @@ getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc)
   
   # # DEBUG
   # sequence_type <- config$files$sequence_type
-  # fraction <- config$aggregation$enabled
+  # fraction <- config$fractions$enabled
   # datafile <- config$files$data
-  # funfunc <- config$aggregation$aggregate_fun
+  # funfunc <- config$fractions$aggregate_fun
   
   # SELECT THE SEQUENCE DO YOU WANT TO USE
   if(sequence_type == 'modified'){
@@ -254,7 +254,6 @@ runMSstats <- function(dmss, contrasts, config){
 
 convertDataLongToMss <- function(data_w, keys, config, fractions){
   
-  fractions <- config$aggregation$enabled
   cat(">> CONVERTING DATA TO MSSTATS FORMAT (This step might take some time. Please be patience)\n")
   data_l = meltMaxQToLong(data_w, na.rm = F)
   data_lk = mergeMaxQDataWithKeys(data_l, keys, by=c('RawFile','IsotopeLabelType'))
@@ -459,9 +458,9 @@ main <- function(opt){
     if(is.null(config$msstats$msstats_input)){
       
       # Old option to take the df in wide format (data_w) and reconvert it to 
-      # dmssOLD <- data.table(convertDataLongToMss(data_w, keys, config, config$aggregation$enabled))
+      # dmssOLD <- data.table(convertDataLongToMss(data_w, keys, config, config$fractions$enabled))
       
-      dmss <- getMSstatsFormat(data_f, config$files$sequence_type, config$aggregation$enabled, config$files$data, config$aggregation$aggregate_fun)
+      dmss <- getMSstatsFormat(data_f, config$files$sequence_type, config$fractions$enabled, config$files$data, config$fractions$aggregate_fun)
       
       ## make sure there are no doubles !!
       ## doubles could arise when protein groups are being kept and the same 

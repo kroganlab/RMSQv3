@@ -7,8 +7,8 @@ files :
   sample_plots : 1
 data:
   enabled : 1
-aggregation:
-  enabled : 0
+fractions:
+  enabled : 0 # 1 for protein fractions
   aggregate_fun : sum
 filters:
   enabled : 1
