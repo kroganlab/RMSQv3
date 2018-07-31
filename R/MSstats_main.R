@@ -252,36 +252,6 @@ runMSstats <- function(dmss, contrasts, config){
   return(results)
 }
 
-
-convertDataLongToMss <- function(data_w, keys, config, fractions){
-  
-  cat(">> CONVERTING DATA TO MSSTATS FORMAT (This step might take some time. Please be patience)\n")
-  data_l = meltMaxQToLong(data_w, na.rm = F)
-  data_lk = mergeMaxQDataWithKeys(data_l, keys, by=c('RawFile','IsotopeLabelType'))
-  dmss = dataToMSSFormat(data_lk)
-
-  # PROTEIN FRACTIONS
-  if(fractions){
-    cat("\t>>Processing Fractions\n")
-    # Aggregation won't work with the NA columns, that's why we select this columns
-    predmss <- dmss[c( "ProteinName", "PeptideSequence", "ProductCharge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
-    dmss2 <- aggregate(data = predmss, Intensity~ProteinName+PeptideSequence+ProductCharge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = sum)
-    # After the data has been aggregated, then we add the columns
-    dmss2$PrecursorCharge <- NA 
-    dmss2$FragmentIon <- NA
-    # And re-sort it as msstats likes it
-    dmss <- dmss2[c("ProteinName", "PeptideSequence", "PrecursorCharge", "FragmentIon", "ProductCharge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
-  }
-  
-  ## sanity check for zero's
-  if(nrow(dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]) > 0){
-    dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]$Intensity = NA
-  } 
-  write.table(dmss, file=gsub('.txt','-mss.txt',config$files$data), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
-  return(dmss)  
-}
-
-
 # annotate the files based on the Uniprot accession id's
 Extras.annotate <- function(results, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='HUMAN'){
   cat(">> ANNOTATING\n")
@@ -485,11 +455,8 @@ main <- function(opt){
   if(config$msstats$enabled){
     
     if(is.null(config$msstats$msstats_input)){
-      
-      # Old option to take the df in wide format (data_w) and reconvert it to 
-      # dmssOLD <- data.table(convertDataLongToMss(data_w, keys, config, config$fractions$enabled))
-      
-      # Go through the old yaml version. Before "fractions" it was called "aggregation"
+      # Go through the old yaml version. 
+      # Before "fractions" it was called "aggregation"
       if(!is.null(config$aggregation$enabled)){
         config$fractions$enabled <- config$aggregation$enabled
         config$fractions$aggregate_fun <- config$aggregation$aggregate_fun

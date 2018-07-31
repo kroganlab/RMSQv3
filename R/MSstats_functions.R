@@ -45,21 +45,9 @@ changeColumnName <- function(dataset, oldname, newname){
   return(dataset)
 }
 
-
-cleanMissingMaxQEntries <- function(data_l){
-  data_l[data_l$Intensity <= 0 | is.infinite(data_l$Intensity) | is.nan(data_l$Intensity),]$Intensity=NA
-  return(data_l)
-}
-
-dataToMSSFormat <- function(d){
-  tmp = data.frame(ProteinName=d$Proteins, PeptideSequence=d$Sequence, PrecursorCharge=NA, FragmentIon=NA, ProductCharge=d$Charge, IsotopeLabelType=d$IsotopeLabelType, Condition=d$Condition, BioReplicate=d$BioReplicate, Run=d$Run, Intensity=d$Intensity)
-  return(tmp)
-}
-
 explodeMaxQProteinGroups <- function(data){
   return(data)
 }
-
 
 fillMissingMaxQEntries <- function(data_w, perRun=F){
   mins = apply(data_w[,4:ncol(data_w),with=F],2, function(x) min(x[x>0],na.rm=T))
