@@ -45,10 +45,6 @@ changeColumnName <- function(dataset, oldname, newname){
   return(dataset)
 }
 
-explodeMaxQProteinGroups <- function(data){
-  return(data)
-}
-
 fillMissingMaxQEntries <- function(data_w, perRun=F){
   mins = apply(data_w[,4:ncol(data_w),with=F],2, function(x) min(x[x>0],na.rm=T))
   for (j in (4:ncol(data_w)))

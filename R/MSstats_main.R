@@ -29,17 +29,18 @@ filterData <- function(data, config){
   if(config$filters$protein_groups == 'remove'){
     cat("\tPROTEIN GROUPS\tREMOVE\n")
     data_f = removeMaxQProteinGroups(data)  
-  }else if(config$filters$protein_groups == 'explode'){
-    cat("\tPROTEIN GROUPS\tEXPLODE\n")
-    data_f = explodeMaxQProteinGroups(data)  
-  }else{
+  }else if(config$filters$protein_groups == 'keep'){
     cat("\tPROTEIN GROUPS\tIGNORE\n")
     data_f = data
+  }else{
+    stop("\n\nFILTERING OPTION FOR protein_groups NOT UNDERSTOOD (OPTIONS AVAILABLE: keep OR remove\n\n")
   }
+  
   if(config$filters$contaminants){
     cat("\tCONTAMINANTS\tREMOVE\n")
     data_f = filterMaxqData(data_f)  
   }
+  
   if(!is.null(config$filters$modification)){
     cat(sprintf("\tMODIFICATIONS\t%s\n",config$filters$modification))
     if(config$filters$modification == 'UB'){

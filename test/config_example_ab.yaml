@@ -15,7 +15,7 @@ silac:
 filters: 
   enabled : 1
   contaminants : 1
-  protein_groups : remove #remove, explode, ignore
+  protein_groups : remove #remove, keep
   modifications : #or empty
 msstats :
   enabled : 1
