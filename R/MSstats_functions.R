@@ -259,6 +259,17 @@ plotHeat <- function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_
   heat_data_w
 }
 
+prettyPrintHeatmapLabels <- function(uniprot_acs, uniprot_ids, gene_names){
+  #uniprot_ids_trunc = gsub('([A-Z,0-9]+)_([A-Z,0-9]+)','\\1',uniprot_ids)
+  #longest_id = max(nchar(uniprot_ids_trunc))
+  #tmp_frame = data.frame(t=uniprot_ids_trunc, s=longest_id-nchar(uniprot_ids_trunc)+1, g=gene_names,a=uniprot_acs, stringsAsFactors=F)
+  #tmp_frame[is.na(tmp_frame$t),]$t=tmp_frame[is.na(tmp_frame$t),]$a
+  #result = apply(tmp_frame, 1, function(x)paste0(x[1],paste(rep(' ',x[2]),collapse=''),x[3]))
+  #result = apply(tmp_frame, 1, function(x)paste0(x[4],' ',x[3],collapse=''))
+  result = paste(uniprot_acs,uniprot_ids,gene_names,sep=' ')
+  return(result)
+}
+
 #' @title Read in Evidence File
 #' @description Read in a MaxQuant searched Evidence file using data.table. This function propperly classes each column and so fread doesn't have to guess.
 #' @param evidence_file The filepath to the MaxQuant searched data (evidence) file (txt tab delimited file).
@@ -341,6 +352,85 @@ significantHits <- function(mss_results, labels='*', LFC=c(-2,2), FDR=0.05){
   return(significant_results)
 }
 
+simplifyAggregate <- function(str, sep=',', numeric=F){
+  str_vec = unlist(str_split(str, pattern = sep))
+  if(numeric){
+    str_vec = sort(unique(as.numeric(str_vec)))
+  }else{
+    str_vec = sort(unique(str_vec))  
+  }
+  
+  str_new = str_join(as.character(str_vec), collapse = ';')
+  return(str_new)
+}
+
+simplifyOutput <- function(input){
+  input$Protein = apply(input, 1, function(x) simplifyAggregate(unname(x['Protein']), sep = ';'))
+  if(any(grepl('mod_sites',colnames(input)))){
+    input$mod_sites = apply(input, 1, function(x) simplifyAggregate(unname(x['mod_sites'])))  
+  }
+  if(any(grepl('uniprot_ac',colnames(input)))){
+    input$uniprot_ac = apply(input, 1, function(x) simplifyAggregate(unname(x['uniprot_ac'])))
+  }
+  if(any(grepl('entrezgene',colnames(input)))){
+    input$entrezgene = apply(input, 1, function(x) simplifyAggregate(unname(x['entrezgene']), numeric = T))
+  }
+  if(any(grepl('uniprot_genename',colnames(input)))){
+    input$uniprot_genename = apply(input, 1, function(x) simplifyAggregate(unname(x['uniprot_genename'])))
+  }
+  if(any(grepl('description',colnames(input)))){
+    input$description = apply(input, 1, function(x) simplifyAggregate(unname(x['description'])))
+  }
+  input[,sample_1:=gsub('([A-Z,0-9,a-z,_,\\s]+)\\-{1}([A-Z,0-9,a-z,_,\\s]+)','\\1',input$Label)]
+  input[,sample_2:=gsub('([A-Z,0-9,a-z,_,\\s]+)\\-{1}([A-Z,0-9,a-z,_,\\s]+)','\\2',input$Label)]
+  input[,Label:=NULL]
+  if(any(grepl('group_id',colnames(input)))){
+    input[,group_id:=NULL]
+  }
+  return(input)
+}
+
+
+volcanoPlot <- function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='', PDF=T, decimal_threshold=16){
+  
+  # handle cases where log2FC is Inf. There are no pvalues or other information for these cases :(
+  # Issues with extreme_val later if we have Inf/-Inf values.
+  if( sum(is.infinite(mss_results_sel$log2FC)) > 0 ){
+    idx <- is.infinite(mss_results_sel$log2FC)
+    mss_results_sel$log2FC[ idx ] <- NA
+  }
+  
+  min_x = -ceiling(max(abs(mss_results_sel$log2FC), na.rm=T))
+  max_x = ceiling(max(abs(mss_results_sel$log2FC), na.rm=T))
+  # Deal with special cases in the data where we have pvalues = Inf,NA,0
+  if( sum(is.na(mss_results_sel$adj.pvalue))>0 ) mss_results_sel <- mss_results_sel[!is.na(mss_results_sel$adj.pvalue),]
+  if(nrow(mss_results_sel[mss_results_sel$adj.pvalue == 0 | mss_results_sel$adj.pvalue == -Inf,]) > 0) mss_results_sel[!is.na(mss_results_sel$adj.pvalue) & (mss_results_sel$adj.pvalue == 0 | mss_results_sel$adj.pvalue == -Inf),]$adj.pvalue = 10^-decimal_threshold
+  max_y = ceiling(-log10(min(mss_results_sel[mss_results_sel$adj.pvalue > 0,]$adj.pvalue, na.rm=T))) + 1
+  
+  l = length(unique(mss_results_sel$Label))
+  w_base = 7
+  h_base = 7
+  
+  if(l<=2){
+    w=w_base*l 
+  }else{
+    w=w_base*2
+  }
+  h = h_base*ceiling(l/2)
+  
+  if(PDF) pdf(file_name, width=w, height=h)
+  p = ggplot(mss_results_sel, aes(x=log2FC,y=-log10(adj.pvalue)))
+  print(p + geom_point(colour='grey') + 
+          geom_point(data = mss_results_sel[mss_results_sel$adj.pvalue <= FDR & mss_results_sel$log2FC>=lfc_upper,], aes(x=log2FC,y=-log10(adj.pvalue)), colour='red', size=2) +
+          geom_point(data = mss_results_sel[mss_results_sel$adj.pvalue <= FDR & mss_results_sel$log2FC<=lfc_lower,], aes(x=log2FC,y=-log10(adj.pvalue)), colour='blue', size=2) +
+          geom_vline(xintercept=c(lfc_lower,lfc_upper), lty='dashed') + 
+          geom_hline(yintercept=-log10(FDR), lty='dashed') + 
+          xlim(min_x,max_x) + 
+          ylim(0,max_y) + 
+          facet_wrap(facets = ~Label, ncol = 2, scales = 'fixed')) 
+  if(PDF) dev.off()
+}
+
 
 #' @title Generate the contrast matrix required by MSstats from a txt file
 #' @description It simplifies the process of creating the contrast file
@@ -399,165 +489,3 @@ writeContrast <- function(contrast_file) {
   }
   return (NA)
 }
-
-###################################
-## doesnt work so far with new code
-## or are not used anymore
-
-logScale <- function(data, format='wide', base=2){
-  if(format=='wide'){
-    data[,4:ncol(data)] = log(data[,4:ncol(data)], base=base)
-  }else{
-    data$Intensity = log(data$Intensity, base=base)
-  }
-  return(data)
-}
-
-
-peptideDistribution <- function(data_l, output_file, PDF=T){
-  ## look at peptide distribution of all proteins
-  if(PDF) pdf(output_file, width=10, height=7)
-  p = ggplot(data=data_l, aes(x=Raw.file, y=Intensity))
-  print(p + geom_boxplot() +
-          theme(axis.text.x=element_text(angle=-90)))  
-  if(PDF) dev.off()
-}
-
-peptideIntensityPerFile <- function(ref_peptides, output_file, PDF=T){
-  if(PDF) pdf(output_file, width=10, height=7)
-  p = ggplot(data=ref_peptides, aes(x=Raw.file, y=Intensity, group=protein_id))
-  print(p + geom_line(colour="grey") + 
-          stat_summary(aes(group=1), geom="point", fun.y=median, shape=17, size=3, colour="darkred") + 
-          ylab("Intensity") +
-          theme(axis.text.x=element_text(angle=-90)))
-  if(PDF) dev.off()
-}
-
-volcanoPlot <- function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='', PDF=T, decimal_threshold=16){
-  
-  # handle cases where log2FC is Inf. There are no pvalues or other information for these cases :(
-  # Issues with extreme_val later if we have Inf/-Inf values.
-  if( sum(is.infinite(mss_results_sel$log2FC)) > 0 ){
-    idx <- is.infinite(mss_results_sel$log2FC)
-    mss_results_sel$log2FC[ idx ] <- NA
-  }
-  
-  min_x = -ceiling(max(abs(mss_results_sel$log2FC), na.rm=T))
-  max_x = ceiling(max(abs(mss_results_sel$log2FC), na.rm=T))
-  # Deal with special cases in the data where we have pvalues = Inf,NA,0
-  if( sum(is.na(mss_results_sel$adj.pvalue))>0 ) mss_results_sel <- mss_results_sel[!is.na(mss_results_sel$adj.pvalue),]
-  if(nrow(mss_results_sel[mss_results_sel$adj.pvalue == 0 | mss_results_sel$adj.pvalue == -Inf,]) > 0) mss_results_sel[!is.na(mss_results_sel$adj.pvalue) & (mss_results_sel$adj.pvalue == 0 | mss_results_sel$adj.pvalue == -Inf),]$adj.pvalue = 10^-decimal_threshold
-  max_y = ceiling(-log10(min(mss_results_sel[mss_results_sel$adj.pvalue > 0,]$adj.pvalue, na.rm=T))) + 1
-  
-  l = length(unique(mss_results_sel$Label))
-  w_base = 7
-  h_base = 7
-  
-  if(l<=2){
-    w=w_base*l 
-  }else{
-    w=w_base*2
-  }
-  h = h_base*ceiling(l/2)
-  
-  if(PDF) pdf(file_name, width=w, height=h)
-  p = ggplot(mss_results_sel, aes(x=log2FC,y=-log10(adj.pvalue)))
-  print(p + geom_point(colour='grey') + 
-          geom_point(data = mss_results_sel[mss_results_sel$adj.pvalue <= FDR & mss_results_sel$log2FC>=lfc_upper,], aes(x=log2FC,y=-log10(adj.pvalue)), colour='red', size=2) +
-          geom_point(data = mss_results_sel[mss_results_sel$adj.pvalue <= FDR & mss_results_sel$log2FC<=lfc_lower,], aes(x=log2FC,y=-log10(adj.pvalue)), colour='blue', size=2) +
-          geom_vline(xintercept=c(lfc_lower,lfc_upper), lty='dashed') + 
-          geom_hline(yintercept=-log10(FDR), lty='dashed') + 
-          xlim(min_x,max_x) + 
-          ylim(0,max_y) + 
-          facet_wrap(facets = ~Label, ncol = 2, scales = 'fixed')) 
-  if(PDF) dev.off()
-}
-
-prettyPrintHeatmapLabels <- function(uniprot_acs, uniprot_ids, gene_names){
-  #uniprot_ids_trunc = gsub('([A-Z,0-9]+)_([A-Z,0-9]+)','\\1',uniprot_ids)
-  #longest_id = max(nchar(uniprot_ids_trunc))
-  #tmp_frame = data.frame(t=uniprot_ids_trunc, s=longest_id-nchar(uniprot_ids_trunc)+1, g=gene_names,a=uniprot_acs, stringsAsFactors=F)
-  #tmp_frame[is.na(tmp_frame$t),]$t=tmp_frame[is.na(tmp_frame$t),]$a
-  #result = apply(tmp_frame, 1, function(x)paste0(x[1],paste(rep(' ',x[2]),collapse=''),x[3]))
-  #result = apply(tmp_frame, 1, function(x)paste0(x[4],' ',x[3],collapse=''))
-  result = paste(uniprot_acs,uniprot_ids,gene_names,sep=' ')
-  return(result)
-}
-
-normalizeToReference <- function(data_l_ref, ref_protein, PDF=T, output_file){
-  
-  data_l_ref$Intensity = log2(data_l_ref$Intensity)  
-  
-  ## SAMPLES WITH REF PROTEINS BEFORE 
-  peptideDistribution(data_l_ref, gsub('.txt','-protein-dist-b.pdf',output_file))
-  
-  ## compute the average value for background reference peptides over all samples (background+bait)
-  ## normalize against background reference proteins
-  ref_peptides = data_l_ref[grep(ref_protein, data_l_ref$Proteins),]
-  ref_peptides = data.frame(ref_peptides, protein_id=as.character(paste0(ref_peptides$Sequence,ref_peptides$Charge)), stringsAsFactors=F)
-  ref_peptides_counts = aggregate(Raw.file ~ protein_id,data=ref_peptides,FUN=function(x)length(unique(x)))
-  unique_files = length(unique(data_l_ref$Raw.file))
-  complete_observations = ref_peptides_counts[ref_peptides_counts$Raw.file == unique_files,'protein_id']
-  ref_peptides_complete = ref_peptides[ref_peptides$protein_id %in% complete_observations,]
-  
-  ## look at their individual signal over replicates
-  peptideIntensityPerFile(ref_peptides_complete[!is.na(ref_peptides_complete$Intensity) & is.finite(ref_peptides_complete$Intensity),], gsub('.txt','-peptide-signal-b.pdf',output_file))
-  
-  ref_peptides_avg_per_rep = aggregate(Intensity ~ Raw.file, data=ref_peptides_complete, FUN=median)
-  ref_peptides_avg_all = median(ref_peptides_avg_per_rep$Intensity)
-  ref_peptides_avg_per_rep = data.frame(Raw.file=ref_peptides_avg_per_rep$Raw.file, correction=ref_peptides_avg_all-ref_peptides_avg_per_rep$Intensity)
-  ref_peptides_complete = merge(ref_peptides_complete, ref_peptides_avg_per_rep, by='Raw.file', all.x=T)
-  ref_peptides_complete = data.frame(ref_peptides_complete, IntensityCorrected=ref_peptides_complete$Intensity+ref_peptides_complete$correction)
-  
-  ref_peptides_complete$Intensity=ref_peptides_complete$IntensityCorrected
-  peptideIntensityPerFile(ref_peptides_complete[!is.na(ref_peptides_complete$Intensity) & is.finite(ref_peptides_complete$Intensity),], gsub('.txt','-peptide-signal-a.pdf',output_file))
-  
-  data_l_ref = merge(data_l_ref, ref_peptides_avg_per_rep, by='Raw.file', all.x=T)
-  data_l_ref$Intensity=data_l_ref$Intensity+data_l_ref$correction
-  data_l_ref = data_l_ref[,-(ncol(data_l_ref))]
-  
-  ## SAMPLES WITH REF PROTEINS AFTER
-  peptideDistribution(data_l_ref, gsub('.txt','-protein-dist-a.pdf',output_file))
-  data_l_ref$Intensity=2^(data_l_ref$Intensity)
-  
-  return(data_l_ref)
-}
-
-simplifyAggregate <- function(str, sep=',', numeric=F){
-  str_vec = unlist(str_split(str, pattern = sep))
-  if(numeric){
-    str_vec = sort(unique(as.numeric(str_vec)))
-  }else{
-    str_vec = sort(unique(str_vec))  
-  }
-  
-  str_new = str_join(as.character(str_vec), collapse = ';')
-  return(str_new)
-}
-
-simplifyOutput <- function(input){
-  input$Protein = apply(input, 1, function(x) simplifyAggregate(unname(x['Protein']), sep = ';'))
-  if(any(grepl('mod_sites',colnames(input)))){
-    input$mod_sites = apply(input, 1, function(x) simplifyAggregate(unname(x['mod_sites'])))  
-  }
-  if(any(grepl('uniprot_ac',colnames(input)))){
-    input$uniprot_ac = apply(input, 1, function(x) simplifyAggregate(unname(x['uniprot_ac'])))
-  }
-  if(any(grepl('entrezgene',colnames(input)))){
-    input$entrezgene = apply(input, 1, function(x) simplifyAggregate(unname(x['entrezgene']), numeric = T))
-  }
-  if(any(grepl('uniprot_genename',colnames(input)))){
-    input$uniprot_genename = apply(input, 1, function(x) simplifyAggregate(unname(x['uniprot_genename'])))
-  }
-  if(any(grepl('description',colnames(input)))){
-    input$description = apply(input, 1, function(x) simplifyAggregate(unname(x['description'])))
-  }
-  input[,sample_1:=gsub('([A-Z,0-9,a-z,_,\\s]+)\\-{1}([A-Z,0-9,a-z,_,\\s]+)','\\1',input$Label)]
-  input[,sample_2:=gsub('([A-Z,0-9,a-z,_,\\s]+)\\-{1}([A-Z,0-9,a-z,_,\\s]+)','\\2',input$Label)]
-  input[,Label:=NULL]
-  if(any(grepl('group_id',colnames(input)))){
-    input[,group_id:=NULL]
-  }
-  return(input)
-}
-
