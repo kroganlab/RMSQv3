@@ -10,6 +10,8 @@ data:
 fractions: 
   enabled : 0 # 1 for protein fractions
   aggregate_fun : sum
+silac: 
+  enabled : 0 # 1 for SILAC experiments
 filters: 
   enabled : 1
   contaminants : 1
