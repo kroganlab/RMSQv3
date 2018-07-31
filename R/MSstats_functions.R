@@ -45,17 +45,6 @@ changeColumnName <- function(dataset, oldname, newname){
   return(dataset)
 }
 
-fillMissingMaxQEntries <- function(data_w, perRun=F){
-  mins = apply(data_w[,4:ncol(data_w),with=F],2, function(x) min(x[x>0],na.rm=T))
-  for (j in (4:ncol(data_w)))
-    if(perRun){
-      set(data_w,which(is.na(data_w[[j]])),j,mins[j-3])  
-    }else{
-      set(data_w,which(is.na(data_w[[j]])),j,min(mins))
-    }
-  return(data_w)
-}
-
 filterMaxqData <- function(data){
   data_selected = data[grep("CON__|REV__",data$Proteins, invert=T),]
   blank.idx <- which(data_selected$Proteins =="")
@@ -63,46 +52,10 @@ filterMaxqData <- function(data){
   return(data_selected)
 }
 
-flattenKeysTechRepeats <- function(keys){
-  keys_agg = aggregate(. ~ BioReplicate, data=keys, FUN=function(x) unique(x)[1])
-  keys_agg$Run = keys_agg$BioReplicate
-  return(keys_agg)
-}
-
-
-flattenMaxQTechRepeats <- function(data_l){
-  
-}
-
-
-## eg. getFileNameWithoutLabel('VE20130426_04_dbdbk_Light')
-getFileNameWithoutLabel <- function(str){
-  last_idx = regexpr("\\_[^\\_]*$", str)[1]
-  return(substr(str,0,last_idx-1))
-}
-
-
-# eg. getIsotopeLabel('VE20130426_04_dbdbk_Light')
-getIsotopeLabel <- function(str){
-  last_idx = regexpr("\\_[^\\_]*$", str)[1]
-  return(substr(str,last_idx+1,nchar(str)))
-}
-
-
+# Not used. Is useful?
 is.uniprotAc <- function(identifier){
   grepl('[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}',identifier)
 }
-
-
-meltMaxQToLong <- function(data_w, na.rm=F){
-  data_l = reshape2::melt(data_w, id.vars=c('Proteins','Sequence','Charge'), na.rm = na.rm)
-  setnames(data_l,old=4:5,new=c('RawFile','Intensity'))
-  data_l[,'IsotopeLabelType':=NA]
-  data_l$IsotopeLabelType=apply(data_l,1,function(x) getIsotopeLabel(x['RawFile']))
-  data_l$RawFile=apply(data_l,1,function(x) getFileNameWithoutLabel(x['RawFile']))
-  return(data_l)
-}
-
 
 mergeMaxQDataWithKeys <- function(data, keys, by=c('RawFile')){
   # Check if the number of RawFiles is the same.
@@ -151,54 +104,6 @@ MQutil.SILACToLong = function(filename, output){
   cat("----- + File ",output, " has been created\n")
   return(tmp_long)
 }
-
-myNormalizeMedianValues <- function (x) {
-  narrays <- NCOL(x)
-  if (narrays == 1) 
-    return(x)
-  cmed <- log(apply(x, 2, median, na.rm = TRUE))
-  cmed <- exp(cmed - mean(cmed, na.rm=T))
-  t(t(x)/cmed)
-}
-
-
-na.replace <- function(v,value=0) { 
-  v[is.na(v)] = value
-  return(v) 
-}
-
-naMax <- function(x) {
-  return(max(x,na.rm=T))
-}
-
-normalizePerCondition <- function(d, NORMALIZATION_METHOD="scale"){
-  unique_conditions = unique(d$Condition)
-  d_tmp = c()
-  
-  for(u in unique_conditions){
-    print(sprintf("normalizing\t%s",u))
-    ss = data_w[d$Condition==u,]
-    tmp = normalizeSingle(ss, NORMALIZATION_METHOD)
-    d_tmp = rbind(d_tmp, tmp)
-  }
-  d_tmp
-}
-
-
-
-normalizeSingle <- function(data_w, NORMALIZATION_METHOD="scale"){
-  
-  data_part = as.matrix(data_w[,4:ncol(data_w),with=F])
-  if(NORMALIZATION_METHOD=='scale'){
-    res = myNormalizeMedianValues(data_part)
-  }else if(NORMALIZATION_METHOD=='quantile'){
-    res = normalizeBetweenArrays(data_part, method=NORMALIZATION_METHOD)
-  }
-  data_part_n = normalizeBetweenArrays(data_part, method=NORMALIZATION_METHOD)
-  res_f = data.table(cbind(data_w[,1:3,with=F],res))
-  return(res_f)
-}
-
 
 plotHeat <- function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_cols=F, display='log2FC'){
   heat_data = data.frame(mss_F, names=names)
@@ -289,7 +194,6 @@ removeMaxQProteinGroups <- function(data){
   return(data_selected)
 }
 
-
 sampleCorrelationHeatmap <- function (data_w, keys, config) {
   mat = log2(data_w[,4:ncol(data_w),with=F])
   mat[is.na(mat)]=0
@@ -304,8 +208,6 @@ sampleCorrelationHeatmap <- function (data_w, keys, config) {
   pheatmap(mat = mat_cor, cellwidth = 10, cellheight = 10, scale = 'none', filename = gsub('.txt','-heatmap.pdf',config$files$output), color = colors_tot, breaks = seq(from=-1,to = 1, by=.1), fontfamily="mono")
   
 }
-
-
 
 samplePeptideBarplot <- function(data_f, config){
   # set up data into ggplot compatible format

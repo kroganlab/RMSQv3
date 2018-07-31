@@ -52,52 +52,6 @@ filterData <- function(data, config){
   return(data_f)
 }
 
-aggregateData <- function(data_w, keys, config, castFun){
-  cat(">>AGGREGATING TECHNICAL REPEATS\n")
-  ##  we need to convert to long format for more easy aggregation
-  data_l = meltMaxQToLong(data_w, na.rm = T)
-  keysagg = flattenKeysTechRepeats(keys)
-  keysmapping = merge(keys, keysagg[,c('BioReplicate','RawFile')], by='BioReplicate')
-  setnames(keysmapping,c('RawFile.x','RawFile.y'),c('RawFile','RawFileCombined'))
-  data_l_combined = merge(data_l, keysmapping, by=c('RawFile','IsotopeLabelType'))
-  aggregate_fun = tryCatch(eval(parse(text=config$aggregation$aggregate_fun)), 
-                           error = function(e) cat("\tWARNING: argument for aggregate_fun not a valid R function - defaulting to:\t 'max'"), 
-                           finally=max) 
-  
-  data_l_combined_agg = data.table(aggregate(Intensity ~ RawFileCombined + Proteins + Sequence + Charge + IsotopeLabelType, FUN=sum, data=data_l_combined))
-  setnames(data_l_combined_agg,'RawFileCombined','RawFile')
-  data_w_agg = castMaxQToWide(data_l_combined_agg)
-  return(list(data_w_agg = data_w_agg, keys_agg = keysagg))
-}
-
-## returns data tabel in wide format
-normalizeData <- function(data_w, config){
-  cat(">> NORMALIZING\n")
-
-  if(grepl('scale|quantile|cyclicloess',config$normalization$method)){
-    cat(sprintf("\tNORMALIZATION\t%s\n",config$normalization$method))
-    data_fn = normalizeSingle(data_w=data_w, NORMALIZATION_METHOD=config$normalization$method)  
-  }else if(grepl('reference',config$normalization$method) && !is.null(config$normalization$reference) && config$normalization$reference %in% unique(data_w$Proteins)){
-    
-    ## CURRENTLY UING MSSTATS METHODS FOR REFERENCE NORMALIZATION
-    data_fn = data_w
-    
-#     cat(sprintf("\tNORMALIZATION\tTO REFERENCE\t%s\n",config$normalization$reference))
-#     ref_files = keys[keys$NormalizationGroup == 'REFERENCE', 'RawFile']
-#     data_l_ref = data_l[data_l$Raw.file %in% ref_files & data_l$Intensity > 0 & is.finite(data_l$Intensity), ]
-#     data_l_nonref = data_l[!(data_l$Raw.file %in% ref_files) & data_l$Intensity > 0 & is.finite(data_l$Intensity), ]
-#     data_l_ref_n = normalizeToReference(data_l_ref=data_l_ref, ref_protein = config$normalization$reference, output_file = config$files$output)
-#     data_fn= rbind(data_l_ref_n, data_l_nonref)
-#     data_fn = castMaxQToWide(data_fn)
-    
-  }else{
-    data_fn = data_w
-  }
-
-  return(data_fn)
-}
-
-
 getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc){
   cat(">> ADAPTING THE DATA TO MSSTATS FORMAT\n")
   
