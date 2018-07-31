@@ -116,15 +116,16 @@ getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc)
     cat("------- + Selecting Sequence Type: MaxQuant 'Sequence' column\n")
   }
   
-  # DEAL WITH FRACTIONS FIRST
+  # DEAL WITH FRACTIONS FIRST (but in reality it is just checking, 
+  # because it is doing a sum up of redundant features anyway)
   if( any(grepl("FractionKey", colnames(data_f))) & fraction){
     cat("------- + DEALING WITH FRACTIONS (sum up intensities per feature)\n")
     predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = funfunc)
     predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
   }else{
     # If there are duplications, sum up
-    # predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = sum)
-    predmss <- data_f[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+    predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = sum)
+    predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
   }
   
   # step required by MSstats to add 'NA' intensity values for those 
@@ -134,7 +135,7 @@ getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc)
   # Using dcast from data.table because it has the option "sep" that allows to 
   # choose the 'collapse' character to use.
   cat("------- + Adding NA values for missing values (required by MSstats)\n")
-  predmss_dc <- data.table::dcast(data = setDT(predmss), Proteins+PeptideSequence+Charge+IsotopeLabelType~Condition+BioReplicate+Run, value.var = "Intensity", sep = "___")
+  predmss_dc <- data.table::dcast(data = setDT(predmss), Proteins+PeptideSequence+Charge+IsotopeLabelType~Condition+BioReplicate+Run, value.var = "Intensity", fun.aggregate = sum, sep = "___")
   predmss_melt <- reshape2::melt(data = predmss_dc, id.vars = c('Proteins', 'PeptideSequence', 'Charge', 'IsotopeLabelType'), value.name = "Intensity")
   # And put back the condition, bioreplicate and run columns
   predmss_melt$Condition <- gsub("(.*)(___)(.*)(___)(.*)", "\\1", predmss_melt$variable)
@@ -406,8 +407,21 @@ main <- function(opt){
     ## although he provided examples) 
     ## Not worth the compormise in data integrity just to save time 
     ## reading in data
-    data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
+
+    # CHECKING FOR SILAC EXPERIMENT
+    if(!is.null(config$silac$enabled)){
+      if(config$silac$enabled){
+        output <- gsub(".txt","-silac.txt",config$files$data)
+        data <- MQutil.SILACToLong(config$files$data, output)
+      }else{
+        data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
+      }
+    }else{
+      data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
+    }
+    
     data <- data.table(data)
+    
     # Remove white Proteins ids
     if(any(data$Proteins == "")){
       cat (">> REMOVING EMPTY PROTEIN LABELS\n")
@@ -420,22 +434,37 @@ main <- function(opt){
     ## the following lines were added to integrate the Label with the Filename when using multiple labels (e.g. H/L)
     ## currently we leave this in because the MSstats discinction on labeltype doesn't work 
     ## see ISSUES https://github.com/everschueren/RMSQ/issues/1
-    
-    tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the evidence file\n'))
-    tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the KEYS file (and it should crash)\n'))
+
+    if( !any(grepl("RawFile", names(data))) ){
+      tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the evidence file\n'))
+    }
+    if( !any(grepl("RawFile", names(keys))) ){
+      tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the KEYS file (and it should crash)\n'))
+    }
     
     cat('\tVERIFYING DATA AND KEYS\n')
-    if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
-
-    data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
-    data$RawFile = paste(data$RawFile, data$IsotopeLabelType, sep='')
-    keys$RawFile = paste(keys$RawFile, keys$IsotopeLabelType, sep='')
-    keys$Run = paste(keys$IsotopeLabelType,keys$Run , sep='')
-    data$IsotopeLabelType = 'L'
-    keys$IsotopeLabelType = 'L'
-    data[Intensity<1,]$Intensity=NA ## fix for weird converted values from fread
+    if(!'IsotopeLabelType' %in% colnames(data)){
+      cat("------- + IsotopeLabelType not detected in evidence file! 
+                    We will assume that this is a label-free experiment 
+                    (adding IsotopeLabelType column with L value\n")
+      data[,IsotopeLabelType:='L']
+    }
     
-    ## end hacks for SILAC
+    data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
+    
+    # HACK FOR SILAC DATA
+    if(!is.null(config$silac$enabled)){
+      if(config$silac$enabled){
+        data$RawFile = paste(data$RawFile, data$IsotopeLabelType, sep='')
+        keys$RawFile = paste(keys$RawFile, keys$IsotopeLabelType, sep='')
+        keys$Run = paste(keys$IsotopeLabelType,keys$Run , sep='')
+        data$IsotopeLabelType = 'L'
+        keys$IsotopeLabelType = 'L'
+      }
+    }
+
+    ## fix for weird converted values from fread
+    data[Intensity<1,]$Intensity=NA 
     
     ## FILTERING : handles Protein Groups and Modifications
     if(config$filters$enabled) data_f = filterData(data, config) else data_f=data
@@ -459,6 +488,12 @@ main <- function(opt){
       
       # Old option to take the df in wide format (data_w) and reconvert it to 
       # dmssOLD <- data.table(convertDataLongToMss(data_w, keys, config, config$fractions$enabled))
+      
+      # Go through the old yaml version. Before "fractions" it was called "aggregation"
+      if(!is.null(config$aggregation$enabled)){
+        config$fractions$enabled <- config$aggregation$enabled
+        config$fractions$aggregate_fun <- config$aggregation$aggregate_fun
+      }
       
       dmss <- getMSstatsFormat(data_f, config$files$sequence_type, config$fractions$enabled, config$files$data, config$fractions$aggregate_fun)
       
@@ -527,6 +562,8 @@ if ( !is.null(opt$help) ) {
 # opt = c(opt, config='~/Box Sync/projects/sanfordBurnham/PetroskiLab/Petroski_Wolf_RFA/results/ab20180402/config-petroski-debugging.yaml')
 ## 2 Abundance
 # opt = c(opt, config='~/experiments/artms/thp1_ab_h1n1/results/testing/config.yaml')
+## 3 SILAC abundance
+# opt = c(opt, config='~/experiments/artms/silac/results/config-silac.yaml')
 
 if(!exists("DEBUG")){
   cat(">> RUN MODE\n")
