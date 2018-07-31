@@ -34,6 +34,35 @@ changeColumnName <- function(dataset, oldname, newname){
   return(dataset)
 }
 
+#' @title Convert the SILAC evidence file to MSstats format
+#' @description Converting the evidence file from a SILAC search to a format
+#' compatible with MSstats. It basically modifies the Raw.files adding the
+#' Heavy and Light label
+#' @param filename The text filepath to the evidence file
+#' @param output The text filepath of the output name
+#' @keywords 
+#' MQutil.SILACToLong()
+#' @export
+MQutil.SILACToLong = function(filename, output){
+  library(data.table)
+  library(reshape2)
+  file = Sys.glob(filename)
+  cat(sprintf('>> PROCESSING SILAC EVIDENCE FILE\n\t%s\n',paste(file,collapse='\n\t')))
+  tmp = fread(file, integer64 = 'double')
+  
+  # reshape the data and split the heavy and light data
+  tmp_long = reshape2::melt(tmp, measure.vars = c('Intensity L','Intensity H'))
+  tmp_long[,Intensity:=NULL]
+  setnames(tmp_long,'value','Intensity')
+  setnames(tmp_long,'variable','IsotopeLabelType')
+  setnames(tmp_long,'Raw file','Raw.file')
+  levels(tmp_long$IsotopeLabelType) = c('L','H')
+  tmp_long[!is.na(tmp_long$Intensity) && tmp_long$Intensity<1,]$Intensity=NA
+  write.table(tmp_long, file=output, sep='\t', quote=F, row.names=F, col.names=T)
+  cat("----- + File ",output, " has been created\n")
+  return(tmp_long)
+}
+
 
 #' @title Generate the contrast matrix required by MSstats from a txt file
 #' @description It simplifies the process of creating the contrast file

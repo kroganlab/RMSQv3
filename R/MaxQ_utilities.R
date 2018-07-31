@@ -73,24 +73,6 @@ loadLibs = function(){
   }
 }
 
-MQutil.SILACToLong = function(filename, output){
-  library(data.table)
-  library(reshape2)
-  file = Sys.glob(filename)
-  cat(sprintf('\tPROCESSING:\n\t%s\n',paste(file,collapse='\n\t')))
-  tmp = fread(file, integer64 = 'double')
-  
-  # reshape the data and split the heavy and light data
-  tmp_long = reshape2::melt(tmp, measure.vars = c('Intensity L','Intensity H'))
-  tmp_long[,Intensity:=NULL]
-  setnames(tmp_long,'value','Intensity')
-  setnames(tmp_long,'variable','IsotopeLabelType')
-  setnames(tmp_long,'Raw file','Raw.file')
-  levels(tmp_long$IsotopeLabelType) = c('L','H')
-  tmp_long[!is.na(tmp_long$Intensity) && tmp_long$Intensity<1,]$Intensity=NA
-  write.table(tmp_long, file=output, sep='\t', quote=F, row.names=F, col.names=T)
-}
-
 MQutil.concat = function(filenames, output){
   library(data.table)
   files = Sys.glob(filenames)
