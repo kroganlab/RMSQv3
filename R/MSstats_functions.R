@@ -65,7 +65,7 @@ filterMaxqData <- function(data){
   # Remove contaminants and reversed sequences (labeled by MaxQuant)
   data_selected = data[grep("CON__|REV__",data$Proteins, invert=T),]
   # Remove empty proteins names
-  blank.idx <- which(data_selected$Proteins =="")
+  blank.idx <- which(data_selected$Proteins == "")
   if(length(blank.idx)>0)  data_selected = data_selected[-blank.idx,]
   return(data_selected)
 }

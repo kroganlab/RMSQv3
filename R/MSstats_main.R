@@ -141,7 +141,7 @@ runMSstats <- function(dmss, contrasts, config){
   if(!is.null(config$msstats$normalization_reference) & config$msstats$normalization_method == 'globalStandards'){  # if globalStandars is selected, must have a reference protein(s)
     normalization_refs = unlist(lapply(strsplit(config$msstats$normalization_reference, split = ','), FUN=trim))
     #mssquant = dataProcess(dmss, normalization=config$msstats$normalization_method, nameStandards=normalization_refs , fillIncompleteRows=T)
-    mssquant = dataProcess(raw = dmss, 
+    mssquant <- dataProcess(raw = dmss, 
                            normalization=config$msstats$normalization_method,
                            nameStandards=normalization_refs,
                            #Interference has been depracated, but it was never used anyway
@@ -346,12 +346,7 @@ main <- function(opt){
     }
     
     data <- data.table(data)
-    
-    # Remove white Proteins ids
-    if(any(data$Proteins == "")){
-      cat (">> REMOVING EMPTY PROTEIN LABELS\n")
-      data <- data[-which(data$Proteins == ""),]
-    }
+
     setnames(data, colnames(data), gsub('\\s','.',colnames(data)))
     keys <- read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
     keys <- data.table(keys)
@@ -486,6 +481,9 @@ if ( !is.null(opt$help) ) {
 # opt = c(opt, config='~/experiments/artms/thp1_ab_h1n1/results/testing/config.yaml')
 ## 3 SILAC abundance
 # opt = c(opt, config='~/experiments/artms/silac/results/config-silac.yaml')
+## 4 abundance with Technical replicates
+# opt = c(opt, config='~/experiments/artms/technical_replicas/configTR.yaml')
+
 
 if(!exists("DEBUG")){
   cat(">> RUN MODE\n")
