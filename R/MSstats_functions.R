@@ -16,11 +16,23 @@ theme_set(theme_bw(base_size = 15, base_family="Helvetica"))
 ####################################
 ## SMALL FUNCTIONS
 
+#' @title Long to Wide format selecting the `Sequence` column of the evidence file
+#' @description Facilitates applying the dcast function, i.e., takes long-format data and casts it into wide-format data.
+#' @param d_long the data.frame in long format
+#' @keywords data.frame, dcast
+#' castMaxQToWide()
+#' @export
 castMaxQToWide <- function(d_long){
   data_w = data.table::dcast( Proteins + Sequence + Charge ~ RawFile + IsotopeLabelType, data=d_long, value.var='Intensity', fun.aggregate=sum, fill = NA)
   return(data_w)
 }
 
+#' @title Long to Wide format selecting the `Modified.sequence` column of the evidence file
+#' @description Facilitates applying the dcast function, i.e., takes long-format data and casts it into wide-format data.
+#' @param d_long the data.frame in long format
+#' @keywords data.frame, dcast
+#' castMaxQToWidePTM()
+#' @export
 castMaxQToWidePTM <- function(d_long){
   data_w = data.table::dcast( Proteins + Modified.sequence + Charge ~ RawFile + IsotopeLabelType, data=d_long, value.var='Intensity', fun.aggregate=sum, fill=NA)
   setnames(data_w,2,'Sequence')
@@ -36,11 +48,9 @@ castMaxQToWidePTM <- function(d_long){
 #' changeColumnName()
 #' @export
 changeColumnName <- function(dataset, oldname, newname){
-  
   if( !(oldname %in% colnames(dataset)) ){
     stop("The Column name provided <",oldname,"> was not found in the data.table provided")
   }
-  
   names(dataset)[grep(paste0('^',oldname,'$'), names(dataset))] <- newname
   return(dataset)
 }
