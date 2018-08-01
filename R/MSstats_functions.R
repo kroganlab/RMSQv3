@@ -55,8 +55,16 @@ changeColumnName <- function(dataset, oldname, newname){
   return(dataset)
 }
 
+#' @title Remove contaminants and empty proteins
+#' @description Remove contaminants and erronously identified 'reverse' sequences as by MaxQuant
+#' @param d_long the data.frame in long format
+#' @keywords cleanup, contaminants
+#' filterMaxqData()
+#' @export
 filterMaxqData <- function(data){
+  # Remove contaminants and reversed sequences (labeled by MaxQuant)
   data_selected = data[grep("CON__|REV__",data$Proteins, invert=T),]
+  # Remove empty proteins names
   blank.idx <- which(data_selected$Proteins =="")
   if(length(blank.idx)>0)  data_selected = data_selected[-blank.idx,]
   return(data_selected)
@@ -348,6 +356,7 @@ writeContrast <- function(contrast_file) {
   }
   
   # validate the input
+  input_contrasts <- trimws(input_contrasts)
   valid <- TRUE
   accepted_chars <- c(LETTERS, letters, 0:9, '-','_')
   for (x in input_contrasts) {
