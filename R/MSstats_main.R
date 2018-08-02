@@ -346,14 +346,10 @@ main <- function(opt){
     }
     
     data <- data.table(data)
-
     setnames(data, colnames(data), gsub('\\s','.',colnames(data)))
+    
     keys <- read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
     keys <- data.table(keys)
-    
-    ## the following lines were added to integrate the Label with the Filename when using multiple labels (e.g. H/L)
-    ## currently we leave this in because the MSstats discinction on labeltype doesn't work 
-    ## see ISSUES https://github.com/everschueren/RMSQ/issues/1
 
     if( !any(grepl("RawFile", names(data))) ){
       tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the evidence file\n'))
@@ -363,14 +359,13 @@ main <- function(opt){
     }
     
     cat('\tVERIFYING DATA AND KEYS\n')
+    
     if(!'IsotopeLabelType' %in% colnames(data)){
       cat("------- + IsotopeLabelType not detected in evidence file! 
-                    We will assume that this is a label-free experiment 
-                    (adding IsotopeLabelType column with L value\n")
+                     It will be assumed that this is a label-free experiment 
+                     (adding IsotopeLabelType column with L value\n")
       data[,IsotopeLabelType:='L']
     }
-    
-    data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
     
     # HACK FOR SILAC DATA
     if(!is.null(config$silac$enabled)){
@@ -380,7 +375,12 @@ main <- function(opt){
         keys$Run = paste(keys$IsotopeLabelType,keys$Run , sep='')
         data$IsotopeLabelType = 'L'
         keys$IsotopeLabelType = 'L'
+        data <- mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
+      }else{
+        data <- mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
       }
+    }else{
+      data <- mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
     }
 
     ## fix for weird converted values from fread
@@ -406,7 +406,7 @@ main <- function(opt){
     
     if(is.null(config$msstats$msstats_input)){
       # Go through the old yaml version. 
-      # Before "fractions" it was called "aggregation"
+      # Before "fractions" it was called "aggregation" in the config.yaml file
       if(!is.null(config$aggregation$enabled)){
         config$fractions$enabled <- config$aggregation$enabled
         config$fractions$aggregate_fun <- config$aggregation$aggregate_fun
@@ -414,7 +414,7 @@ main <- function(opt){
       
       dmss <- getMSstatsFormat(data_f, config$files$sequence_type, config$fractions$enabled, config$files$data, config$fractions$aggregate_fun)
       
-      ## make sure there are no doubles !!
+      ## DEPRECATED : Make sure there are no doubles !!
       ## doubles could arise when protein groups are being kept and the same 
       ## peptide is assigned to a unique Protein. Not sure how this is possible 
       ## but it seems to be like this in maxquant output. 
