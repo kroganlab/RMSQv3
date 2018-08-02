@@ -3,7 +3,6 @@ files :
   data : /path/to/project/data/data/evidence.txt
   contrasts : /path/to/project/data/contrast.txt
   output : /path/to/project/results/20160621-results.txt
-  sequence_type : modified # unmodified, modified
   sample_plots : 1
 data:
   enabled : 1

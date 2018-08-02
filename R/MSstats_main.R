@@ -61,14 +61,17 @@ getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc)
   # datafile <- config$files$data
   # funfunc <- config$fractions$aggregate_fun
   
-  # SELECT THE SEQUENCE DO YOU WANT TO USE
+  # SELECT THE SEQUENCE DO YOU WANT TO USE (OLD DEPRECATED OPTION)
   if(sequence_type == 'modified'){
     data_f <- changeColumnName(data_f, "Modified.sequence", "PeptideSequence")
     data_f$PeptideSequence <- gsub("_", "", data_f$PeptideSequence)
     cat("------- + Selecting Sequence Type: MaxQuant 'Modified.sequence' column\n")
-  }else{
+  }else if (sequence_type == 'unmodified'){
     data_f <- changeColumnName(data_f, "Sequence", "PeptideSequence")
     cat("------- + Selecting Sequence Type: MaxQuant 'Sequence' column\n")
+  }else{
+    stop("\n\nOPTION sequence_type NOT RECOGNIZED 
+         (VALID OPTIONS: modified OR unmodified")
   }
   
   # DEAL WITH FRACTIONS FIRST (but in reality it is just checking, 
@@ -390,8 +393,14 @@ main <- function(opt){
     if(config$filters$enabled) data_f = filterData(data, config) else data_f=data
     
     ## FORMATTING IN WIDE FORMAT TO CREATE HEATMAPS
-    if(config$files$sequence_type == 'modified') castFun = castMaxQToWidePTM else castFun = castMaxQToWide
-    data_w = castFun(data_f)
+    if(!is.null(config$files$sequence_type)){
+      cat(">> OLD CONFIGUATION FILE DETECTED : sequence_type DETECTED. 
+              WARNING: RECOMMENDED TO ALWAYS USED modified HERE\n")
+      if(config$files$sequence_type == 'modified') castFun = castMaxQToWidePTM else castFun = castMaxQToWide
+      data_w = castFun(data_f)
+    }else{
+      data_w = castMaxQToWidePTM(data_f)
+    }
     
     ## HEATMAPS
     if(!is.null(config$files$sample_plots) && config$files$sample_plots){
@@ -412,6 +421,12 @@ main <- function(opt){
         config$fractions$aggregate_fun <- config$aggregation$aggregate_fun
       }
       
+      # DEPRECATED OPTION: in older versions the type of sequence 
+      # could be selected (either modified or unmodified). 
+      if(is.null(config$files$sequence_type)){
+        config$files$sequence_type <- 'modified'
+      }
+
       dmss <- getMSstatsFormat(data_f, config$files$sequence_type, config$fractions$enabled, config$files$data, config$fractions$aggregate_fun)
       
       ## DEPRECATED : Make sure there are no doubles !!
