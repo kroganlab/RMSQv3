@@ -107,7 +107,7 @@ MQutil.SILACToLong = function(filename, output){
   library(data.table)
   library(reshape2)
   file = Sys.glob(filename)
-  cat(sprintf('>> PROCESSING SILAC EVIDENCE FILE\n\t%s\n',paste(file,collapse='\n\t')))
+  cat(sprintf('>> PROCESSING SILAC EVIDENCE FILE\n'))
   tmp = fread(file, integer64 = 'double')
   
   # reshape the data and split the heavy and light data
