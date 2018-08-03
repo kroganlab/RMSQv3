@@ -13,12 +13,16 @@ suppressMessages(library(stringr))
 
 theme_set(theme_bw(base_size = 15, base_family="Helvetica"))
 
-####################################
-## SMALL FUNCTIONS
+# ==============================================================================
+## Small RMSQv3 FUNCTIONS
 
-#' @title Long to Wide format selecting the `Sequence` column of the evidence file
-#' @description Facilitates applying the dcast function, i.e., takes long-format data and casts it into wide-format data.
+# ------------------------------------------------------------------------------
+#' @title Long to Wide format using the `Sequence` column of the evidence file
+#' 
+#' @description Facilitates applying the dcast function, i.e., takes long-format
+#' data and casts it into wide-format data.
 #' @param d_long the data.frame in long format
+#' @return Evidence file reshaped by rawfile and IsotopeLabelType
 #' @keywords data.frame, dcast
 #' castMaxQToWide()
 #' @export
@@ -27,9 +31,13 @@ castMaxQToWide <- function(d_long){
   return(data_w)
 }
 
-#' @title Long to Wide format selecting the `Modified.sequence` column of the evidence file
-#' @description Facilitates applying the dcast function, i.e., takes long-format data and casts it into wide-format data.
+# ------------------------------------------------------------------------------
+#' @title Long to Wide format selecting the `Modified.sequence` column of the 
+#' evidence file
+#' @description Facilitates applying the dcast function, i.e., takes long-format 
+#' data and casts it into wide-format data.
 #' @param d_long the data.frame in long format
+#' @return Evidence file reshaped by rawfile and IsotopeLabelType
 #' @keywords data.frame, dcast
 #' castMaxQToWidePTM()
 #' @export
@@ -39,11 +47,13 @@ castMaxQToWidePTM <- function(d_long){
   return(data_w)
 }
 
+# ------------------------------------------------------------------------------
 #' @title Change a specific column name in a given data.frame
 #' @description Making easier j
 #' @param dataset the data.frame with the column name you want to change
 #' @param oldname the old column name
 #' @param neename the new name for that column
+#' @return A new data.frame with the new specified column name
 #' @keywords rename, data.frame, columns
 #' changeColumnName()
 #' @export
@@ -55,9 +65,12 @@ changeColumnName <- function(dataset, oldname, newname){
   return(dataset)
 }
 
+# ------------------------------------------------------------------------------
 #' @title Remove contaminants and empty proteins
-#' @description Remove contaminants and erronously identified 'reverse' sequences as by MaxQuant
-#' @param d_long the data.frame in long format
+#' @description Remove contaminants and erronously identified 'reverse' 
+#' sequences by MaxQuant
+#' @param data the data.frame in long format
+#' @return A new data.frame without REV__ and CON__ Proteins
 #' @keywords cleanup, contaminants
 #' filterMaxqData()
 #' @export
@@ -70,11 +83,17 @@ filterMaxqData <- function(data){
   return(data_selected)
 }
 
-# Not used. Is useful?
-is.uniprotAc <- function(identifier){
-  grepl('[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}',identifier)
-}
-
+# ------------------------------------------------------------------------------
+#' @title Merge evidence and keys files
+#' @description Merge the evidence and keys files on the given columns
+#' @param data The evidence in data.frame
+#' @param keys The keys in data.frame
+#' @param by Vector specifying the columns use to merge the evidence and keys.
+#' @return A new data.frame with the evidence and keys merged
+#' Default: `RawFile`
+#' @keywords merge, evidence, keys
+#' mergeMaxQDataWithKeys()
+#' @export
 mergeMaxQDataWithKeys <- function(data, keys, by=c('RawFile')){
   # Check if the number of RawFiles is the same.
   unique_data <- unique(data$RawFile)
@@ -83,10 +102,10 @@ mergeMaxQDataWithKeys <- function(data, keys, by=c('RawFile')){
   if (length(unique_keys) != length(unique_data)){
     keys_not_found = setdiff(unique_keys, unique_data)
     data_not_found = setdiff(unique_data, unique_keys)
-    cat(sprintf("keys found: %s \t keys not in data file:\n%s\n", length(unique_keys)-length(keys_not_found), paste(keys_not_found,collapse='\t')))
-    cat(sprintf("data found: %s \t data not in keys file:\n%s\n", length(unique_data)-length(data_not_found), paste(data_not_found, collapse='\t')))
+    cat(sprintf("\tkeys found: %s \n\t keys not in data file:\n%s\n", length(unique_keys)-length(keys_not_found), paste(keys_not_found,collapse='\t')))
+    cat(sprintf("\tdata found: %s \n\t data not in keys file:\n%s\n", length(unique_data)-length(data_not_found), paste(data_not_found, collapse='\t')))
   }else{
-    cat("\n\t>-----+ Check point: the number of RawFiles in both keys and evidences file is identical\n\n")
+    cat("\t>-----+ Check point: the number of RawFiles in both keys and evidences file is identical\n\n")
   }
   
   ## select only required attributes from MQ format
@@ -94,12 +113,15 @@ mergeMaxQDataWithKeys <- function(data, keys, by=c('RawFile')){
   return(data)
 }
 
+# ------------------------------------------------------------------------------
 #' @title Convert the SILAC evidence file to MSstats format
-#' @description Converting the evidence file from a SILAC search to a format
-#' compatible with MSstats. It basically modifies the Raw.files adding the
+#' 
+#' @description Converting the evidence file from a SILAC search to a format 
+#' compatible with MSstats. It basically modifies the Raw.files adding the 
 #' Heavy and Light label
-#' @param filename The text filepath to the evidence file
-#' @param output The text filepath of the output name
+#' @param filename Text filepath to the evidence file
+#' @param output Text filepath of the output name
+#' @return A data.frame with SILAC data processed for MSstats
 #' @keywords 
 #' MQutil.SILACToLong()
 #' @export
@@ -123,9 +145,26 @@ MQutil.SILACToLong = function(filename, output){
   return(tmp_long)
 }
 
+# ------------------------------------------------------------------------------
+#' @title Heatmap of significant values
+#' 
+#' @description heatmap plot to represent proteins with significant changes
+#' @param mss_F data.frame with the significant values (log2fc, pvalues)
+#' @param out_file Name for the output
+#' @param labelOrder Vector with the particular order for the IDs (default, 
+#' `NULL` no order)
+#' @param names Type of ID used. Default is `Protein`` (uniprot entry id). 
+#' Soon will be possible to use 'Gene' name ids.
+#' @param cluster_cols Select whether to cluster the columns. Options: `T` 
+#' or `F`. Default `T`.
+#' @param display Value used to genarate the heatmaps. Options: `log2FC`, 
+#' `adj.pvalue`, `pvalue`. Default: `log2FC`
+#' @return A heatmap of significant values
+#' @keywords significant, heatmap
+#' plotHeat()
+#' @export
 plotHeat <- function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_cols=F, display='log2FC'){
   heat_data = data.frame(mss_F, names=names)
-  #heat_data = mss_F[,c('uniprot_id','Label','log2FC')]
   
   ## create matrix from log2FC or p-value as user defined
   if(display=='log2FC'){
@@ -135,9 +174,12 @@ plotHeat <- function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_
       heat_data$log2FC[ idx ] <- NA
     }
     heat_data_w = dcast(names ~ Label, data=heat_data, value.var='log2FC') 
-  }else if(display=='pvalue'){
+  }else if(display=='adj.pvalue'){
     heat_data$adj.pvalue = -log10(heat_data$adj.pvalue+10^-16)  
     heat_data_w = dcast(names ~ Label, data=heat_data, value.var='adj.pvalue')  
+  }else if(display=='pvalue'){
+    heat_data$pvalue = -log10(heat_data$pvalue+10^-16)  
+    heat_data_w = dcast(names ~ Label, data=heat_data, value.var='pvalue')  
   }
   
   ## try
@@ -166,25 +208,34 @@ plotHeat <- function(mss_F, out_file, labelOrder=NULL, names='Protein', cluster_
   heat_data_w
 }
 
+# ------------------------------------------------------------------------------
+#' @title Pretty Labels for Heatmaps
+#' @description Generates pretty labels for the heatmaps.
+#' @param uniprot_acs Uniprot accession id
+#' @param uniprot_ids Uniprot entry id
+#' @param gene_names Gene symbol
+#' @return Pretty labels for a heatmap
+#' @keywords plots, pretty
+#' prettyPrintHeatmapLabels()
+#' @export
 prettyPrintHeatmapLabels <- function(uniprot_acs, uniprot_ids, gene_names){
-  #uniprot_ids_trunc = gsub('([A-Z,0-9]+)_([A-Z,0-9]+)','\\1',uniprot_ids)
-  #longest_id = max(nchar(uniprot_ids_trunc))
-  #tmp_frame = data.frame(t=uniprot_ids_trunc, s=longest_id-nchar(uniprot_ids_trunc)+1, g=gene_names,a=uniprot_acs, stringsAsFactors=F)
-  #tmp_frame[is.na(tmp_frame$t),]$t=tmp_frame[is.na(tmp_frame$t),]$a
-  #result = apply(tmp_frame, 1, function(x)paste0(x[1],paste(rep(' ',x[2]),collapse=''),x[3]))
-  #result = apply(tmp_frame, 1, function(x)paste0(x[4],' ',x[3],collapse=''))
   result = paste(uniprot_acs,uniprot_ids,gene_names,sep=' ')
   return(result)
 }
 
-#' @title Read in Evidence File
-#' @description Read in a MaxQuant searched Evidence file using data.table. This function propperly classes each column and so fread doesn't have to guess.
-#' @param evidence_file The filepath to the MaxQuant searched data (evidence) file (txt tab delimited file).
+# ------------------------------------------------------------------------------
+#' @title Read the Evidence File
+#' @description Read in a MaxQuant searched Evidence file using data.table. 
+#' This function properly classes each column and so fread doesn't have 
+#' to guess.
+#' @param evidence_file The filepath to the MaxQuant searched data (evidence) 
+#' file (txt tab delimited file).
+#' @return A data.frame with the evidence file with defining classes 
 #' @keywords MaxQuant, evidence
 #' read_evidence_file()
 #' @export
 read_evidence_file <- function(evidence_file){
-  cat("Reading in evidence file...\n")
+  cat("Reading the evidence file...\n")
   # read in the first line to get the header names
   cols <- readLines(evidence_file, 1)
   cols <- data.frame( V1 = unlist(strsplit(cols, '\t')), stringsAsFactors = F)
@@ -207,11 +258,30 @@ read_evidence_file <- function(evidence_file){
   return(x)
 }
 
+# ------------------------------------------------------------------------------
+#' @title Remove protein groups
+#' @description Remove the group of proteins ids separated by separated by `;`
+#' @param data Data.frame with a `Proteins` column.
+#' @return A data.frame with the protein groups removed
+#' @keywords maxquant, remove, proteingroups
+#' removeMaxQProteinGroups()
+#' @export
 removeMaxQProteinGroups <- function(data){
   data_selected = data[grep(";",data$Proteins, invert=T),]
   return(data_selected)
 }
 
+# ------------------------------------------------------------------------------
+#' @title Correlation heatmaps of all the individual features
+#' @description Correlation heatmap using intensity values across all the 
+#' conditions
+#' @param data_w reshaped data.frame resulting from the `castMaxQToWidePTM` 
+#' function
+#' @param keys keys data.frame
+#' @return A heatmap
+#' @keywords heatmap, intensity, comparisons
+#' sampleCorrelationHeatmap()
+#' @export
 sampleCorrelationHeatmap <- function (data_w, keys, config) {
   mat = log2(data_w[,4:ncol(data_w),with=F])
   mat[is.na(mat)]=0
@@ -227,6 +297,16 @@ sampleCorrelationHeatmap <- function (data_w, keys, config) {
   
 }
 
+# ------------------------------------------------------------------------------
+#' @title Barplot of peptide counts per biological replicate
+#' @description Total number of unique peptide identified per biological 
+#' replicate
+#' @param data_f Evidence file (same structure as the original)
+#' @param config Configuration object
+#' @return Barplot of peptide counts
+#' @keywords barplot, counts, peptides
+#' samplePeptideBarplot()
+#' @export
 samplePeptideBarplot <- function(data_f, config){
   # set up data into ggplot compatible format
   data_f = data.table(data_f, labels=paste(data_f$RawFile, data_f$Condition, data_f$BioReplicate))
@@ -246,6 +326,19 @@ samplePeptideBarplot <- function(data_f, config){
   
 }
 
+# ------------------------------------------------------------------------------
+#' @title Select significant hits
+#' @description Filtered data.frame with significant values (log2fc > 2 | 
+#' log2fc < -2; adj.pvalue < 0.05)
+#' @param mss_results data.frame of MSstats results
+#' @param labels vector of selected labels. Default: all (`*`)
+#' @param LFC log2fc vector, with the negative and positive threshold. Default: 
+#' c(-2, 2)
+#' @param FDR false discovery rate (adj.pvalue) threshold. Default: 0.05
+#' @return A data.frame only with significant hits
+#' @keywords significant, selections
+#' significantHits()
+#' @export
 significantHits <- function(mss_results, labels='*', LFC=c(-2,2), FDR=0.05){
   ## get subset based on labels
   selected_results = mss_results[grep(labels,mss_results$Label), ]
@@ -256,6 +349,15 @@ significantHits <- function(mss_results, labels='*', LFC=c(-2,2), FDR=0.05){
   return(significant_results)
 }
 
+# ------------------------------------------------------------------------------
+#' @title Simplify the aggregation
+#' @description Function used internally by simplifyOutput
+#' @param str column used for the aggregation
+#' @param sep separation symbol used for the aggregation. Default: comma (`,`)
+#' @param numeric Indicate whether `str` is numeric. Default: `F`
+#' @keywords aggregation, internal
+#' simplifyAggregate()
+#' @export
 simplifyAggregate <- function(str, sep=',', numeric=F){
   str_vec = unlist(str_split(str, pattern = sep))
   if(numeric){
@@ -268,6 +370,13 @@ simplifyAggregate <- function(str, sep=',', numeric=F){
   return(str_new)
 }
 
+# ------------------------------------------------------------------------------
+#' @title Simplify output through aggregation
+#' @description Simplify output through aggregation
+#' @param input column used for the aggregation
+#' @keywords aggregation, internal
+#' simplifyOutput()
+#' @export
 simplifyOutput <- function(input){
   input$Protein = apply(input, 1, function(x) simplifyAggregate(unname(x['Protein']), sep = ';'))
   if(any(grepl('mod_sites',colnames(input)))){
@@ -294,7 +403,20 @@ simplifyOutput <- function(input){
   return(input)
 }
 
-
+# ------------------------------------------------------------------------------
+#' @title Volcano plot (log2fc / pvalues)
+#' @description It generates a scatter-plot used to quickly identify changes
+#' @param mss_results_sel Selected MSstats results
+#' @param lfc_upper log2fc upper threshold (positive value)
+#' @param lfc_lower log2fc lower threshold (negative value)
+#' @param FDR False Discovery Rate threshold
+#' @param file_name Name for the output file
+#' @param PDF Option to generate pdf format. Default: `T`
+#' @param decimal_threshold Decimal threshold for the pvalue. 
+#' Default: 16 (10^-16)
+#' @keywords plot, volcano
+#' volcanoPlot()
+#' @export
 volcanoPlot <- function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name='', PDF=T, decimal_threshold=16){
   
   # handle cases where log2FC is Inf. There are no pvalues or other information for these cases :(
@@ -336,6 +458,7 @@ volcanoPlot <- function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name=''
 }
 
 
+# ------------------------------------------------------------------------------
 #' @title Generate the contrast matrix required by MSstats from a txt file
 #' @description It simplifies the process of creating the contrast file
 #' @param contrast_file The text filepath of contrasts
