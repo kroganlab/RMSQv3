@@ -22,35 +22,23 @@ if(length(scriptPath)==0){
 }
 
 ## MAIN FUNCTIONS #######
-
-filterData <- function(data, config){
-  cat(">> FILTERING\n")
-  if(config$filters$protein_groups == 'remove'){
-    cat("\tPROTEIN GROUPS\tREMOVE\n")
-    data_f = removeMaxQProteinGroups(data)  
-  }else if(config$filters$protein_groups == 'keep'){
-    cat("\tPROTEIN GROUPS\tIGNORE\n")
-    data_f = data
-  }else{
-    stop("\n\nFILTERING OPTION FOR protein_groups NOT UNDERSTOOD (OPTIONS AVAILABLE: keep OR remove\n\n")
-  }
-  
-  if(config$filters$contaminants){
-    cat("\tCONTAMINANTS\tREMOVE\n")
-    data_f = filterMaxqData(data_f)  
-  }
-  
-  if(!is.null(config$filters$modification)){
-    cat(sprintf("\tMODIFICATIONS\t%s\n",config$filters$modification))
-    if(config$filters$modification == 'UB'){
-      data_f = data_f[Modifications %like% 'GlyGly']
-    }else if(config$filters$modification == 'PH'){
-      data_f = data_f[Modifications %like% 'Phospho']
-    }
-  }
-  return(data_f)
-}
-
+# ------------------------------------------------------------------------------
+#' @title Generate MSstats format file
+#' @description Takes as input a reduced version of the Evidence file and 
+#' generates the input data.frame required by MSstats. It processes fractionated
+#' data.
+#' @param data_f Maxquant evidence data.frame filtered
+#' @param sequence_type Old option to select between the `Sequence` colu
+#' or the `Modified.sequence`. It is NOT recommended to choose the `Sequence`
+#' column.
+#' @param fraction 1 or 0 option to specified whether it is a fractionated
+#' experiment
+#' @param datafile The evidence file name (to generate the output file)
+#' @param funfunc The function to use to aggregating the data if it is a 
+#' fractionated experiment (`sum` recommended)
+#' @keywords MSstats, format, input, fractions
+#' getMSstatsFormat()
+#' @export
 getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc){
   cat(">> ADAPTING THE DATA TO MSSTATS FORMAT\n")
   
@@ -121,7 +109,28 @@ getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc)
   return(dmss)  
 }
 
-
+# ------------------------------------------------------------------------------
+#' @title Run MSstats
+#' @description Run MSstats giving a processed evidence file (MSstats format)
+#' and a contrast file. It also generates a series of summary plots before,
+#' and after normalization.
+#' @param dmss Formatted and filtered evidence file (MSstats format)
+#' @param contrasts The contrast data.frame in MSstats format
+#' @param config the configation (imported yaml) object
+#' @return It generates several output files
+#' - If selected `before` and/or `after`, the `ProfilePlot` and `QCPlot` plots 
+#' by the MSstats `dataProcessPlots` function are generated 
+#' (in `.pdf` format)
+#' - Text file output of `quantification()` (`-mss-sampleQuant.txt`)
+#' - Text file output of `quantification(type="Group")` (`-mss-groupQuant.txt`)
+#' - MSstats `ProcessedData` normalized results (`-mss-normalized.txt`)
+#' - MSstats `ComparisonResult` results
+#' - MSstats `ModelQC` results
+#' - MSstats `designSampleSize` sample size
+#' - MSstats `designSampleSize` power experiment
+#' @keywords run, MSstats, contrast, intensity, plots, QC
+#' runMSstats()
+#' @export
 runMSstats <- function(dmss, contrasts, config){
   # plot the data BEFORE normalization
   if(grepl('before', config$msstats$profilePlots)){
@@ -268,7 +277,18 @@ Extras.annotate <- function(results, output_file=opt$output, uniprot_ac_col='Pro
   return(results_out)
 }
 
-# Annotate data, plot volcano plots, etc
+# ------------------------------------------------------------------------------
+#' @title Write extras
+#' @description Extras after MSstats, as annotations, volcano plots, heatmaps
+#' @param results MSstats results
+#' @param config The configuration object (yaml)
+#' @return Extras as selected in the yaml file, including:
+#' - volcano plot (pdf)
+#' - Adding annotations (gene symbol based on uniprot)
+#' - 
+#' @keywords extras, annotations, volcano
+#' writeExtras()
+#' @export
 writeExtras <- function(results, config){
 
   if(length(results)==0 | !exists('results')){
@@ -320,16 +340,14 @@ writeExtras <- function(results, config){
   }
 }
 
-#' @title Remove white spaces
-#' @description Remove white spaces
-#' @param x A string
-#' @keywords remove, whitespace
-#' trim()
-#' @export
-trim <- function (x){
-  gsub("^\\s+|\\s+$", "", x)
-}
 
+#' @title Main Function
+#' @description Main function running all the selected options
+#' @param opt the object with all the options
+#' @return All the selected options
+#' @keywords main, driver, function
+#' main()
+#' @export
 main <- function(opt){
   cat(">> MSSTATS PIPELINE\n")
   config = tryCatch(yaml.load_file(opt$config), error = function(e) {cat(opt$config);break} )

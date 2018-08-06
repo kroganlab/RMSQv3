@@ -66,6 +66,44 @@ changeColumnName <- function(dataset, oldname, newname){
 }
 
 # ------------------------------------------------------------------------------
+#' @title Filtering data
+#' @description Apply the filtering options, i.e., remove protein groups and/or
+#' contaminants, and/or, select posttranslational modification (if any)
+#' @param data Evidence file (data.frame)
+#' @param config Configuration object (opened yaml file)
+#' @keywords filtering, remove, proteingroups, ptms
+#' filterData()
+#' @export
+
+filterData <- function(data, config){
+  cat(">> FILTERING\n")
+  if(config$filters$protein_groups == 'remove'){
+    cat("\tPROTEIN GROUPS\tREMOVE\n")
+    data_f = removeMaxQProteinGroups(data)  
+  }else if(config$filters$protein_groups == 'keep'){
+    cat("\tPROTEIN GROUPS\tIGNORE\n")
+    data_f = data
+  }else{
+    stop("\n\nFILTERING OPTION FOR protein_groups NOT UNDERSTOOD (OPTIONS AVAILABLE: keep OR remove\n\n")
+  }
+  
+  if(config$filters$contaminants){
+    cat("\tCONTAMINANTS\tREMOVE\n")
+    data_f = filterMaxqData(data_f)  
+  }
+  
+  if(!is.null(config$filters$modification)){
+    cat(sprintf("\tMODIFICATIONS\t%s\n",config$filters$modification))
+    if(config$filters$modification == 'UB'){
+      data_f = data_f[Modifications %like% 'GlyGly']
+    }else if(config$filters$modification == 'PH'){
+      data_f = data_f[Modifications %like% 'Phospho']
+    }
+  }
+  return(data_f)
+}
+
+# ------------------------------------------------------------------------------
 #' @title Remove contaminants and empty proteins
 #' @description Remove contaminants and erronously identified 'reverse' 
 #' sequences by MaxQuant
