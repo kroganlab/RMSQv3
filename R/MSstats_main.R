@@ -21,7 +21,6 @@ if(length(scriptPath)==0){
   source(paste(scriptPath,"/MSstats_functions.R",sep=""))  
 }
 
-#########################
 ## MAIN FUNCTIONS #######
 
 filterData <- function(data, config){
@@ -321,7 +320,15 @@ writeExtras <- function(results, config){
   }
 }
 
-trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+#' @title Remove white spaces
+#' @description Remove white spaces
+#' @param x A string
+#' @keywords remove, whitespace
+#' trim()
+#' @export
+trim <- function (x){
+  gsub("^\\s+|\\s+$", "", x)
+}
 
 main <- function(opt){
   cat(">> MSSTATS PIPELINE\n")

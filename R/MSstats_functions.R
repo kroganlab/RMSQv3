@@ -404,6 +404,17 @@ simplifyOutput <- function(input){
 }
 
 # ------------------------------------------------------------------------------
+#' @title Remove white spaces
+#' @description Remove white spaces
+#' @param x A string
+#' @keywords remove, whitespace
+#' trim()
+#' @export
+trim <- function (x){
+  gsub("^\\s+|\\s+$", "", x)
+}
+
+# ------------------------------------------------------------------------------
 #' @title Volcano plot (log2fc / pvalues)
 #' @description It generates a scatter-plot used to quickly identify changes
 #' @param mss_results_sel Selected MSstats results
