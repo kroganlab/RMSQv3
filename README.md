@@ -71,7 +71,16 @@ FU20170922-15|L|MOCK\_18H|MOCK\_18H-2|8
 
 ### `contrast.txt`
 
-The comparisons between conditions that we want to quantified.
+The comparisons between conditions that we want to quantified. The written
+comparisons must follow the following consensus:
+
+```
+Condition_A-Condition_B_mutant
+```
+
+- The two conditions to be compared are separated by a dash symbol (`-`)
+- The condition on the left will take the positive log2FC sign (if it is more abundant) and the one on the right the negative log2FC (if it is more abundant)
+- The only special character allowed for the condition names is the underscore (`_`)
 
 Example (see `test/example-contrast.txt`)
 
@@ -82,22 +91,115 @@ H1N1_12H-MOCK_12H
 H1N1_18H-MOCK_18H
 ```
 
+### The configuration file (`.yaml`)
 
-## Running MSstats v3
+The configuration file in `yaml` format contains the details of the analyses 
+performed by `RMSQv3`. Check the folder `test` for a sample configuration file 
+depending on the experiment. It currently covers the quantification of 
+protein abundance, phosphorylation, ubiquitination and acetylation.
 
-### `MSstats_main.R`
+The configuration file contains the following sections:
 
 ```
-MSstats_main.R -c configuration_file.yaml
+files :
+  keys : /path/to/project/data/keys.txt
+  data : /path/to/project/data/data/evidence.txt
+  contrasts : /path/to/project/data/contrast.txt
+  output : /path/to/project/results/20160621-results.txt
+  sample_plots : 1
 ```
 
-Check the folder `test` for a sample configuration file depending on the experiment.
+The file path / name of the required files. **sample_plots** creates quality
+control plots, including heatmaps of the peptide features based on intensity
+values, and peptide counts.
 
-##### Special case: Protein fractionation
+
+```
+data:
+  enabled : 1
+```
+
+- 1 to pre-process the data provided in the *files* section.
+- 0 won't process the data (and a pre-generated MSstats file will be expected)
+
+```
+fractions: 
+  enabled : 0 # 1 for protein fractions
+  aggregate_fun : sum
+```
+Multiple fractionation or separation methods are often combined in proteomics 
+to improve signal-to-noise and proteome coverage and to reduce interference
+between peptides in quantitative proteomics.
+Use 1 to enable processing protein fractionation datasets. See the
+*Special case: Protein fractionation* section below for details.
+
+```
+silac: 
+  enabled : 0 # 1 for SILAC experiments
+```
+
+Mark 1 if the files belong to a SILAC experiment. See *Special case: SILAC*
+below for details
+
+```
+filters: 
+  enabled : 1 # Enables filtering
+  contaminants : 1 # Removes contaminants (CON__ and REV__)
+  protein_groups : remove # remove or keep protein groups
+  modifications :  # empty for all, PH, UB, or AC
+```
+
+Filtering the datasets:
+
+- `contaminants` : 1 to remove contaminants (CON__ and REV__)
+- `protein_groups` : `remove` or `keep` protein groups
+- `modifications` :  `empty` for all, `PH` to select phospho-peptides, `UB`
+ubiquitinated peptides, or `AC` to select acetylated peptides.
+
+
+```
+msstats :
+  enabled : 1
+  msstats_input : 
+  version :  # blank = R library version, MSstats.daily = a location where to find it
+  profilePlots : before-after # before, after, before-after, none
+  normalization_method : equalizeMedians # globalStandards (include a reference protein(s) ), equalizeMedians, quantile, 0
+  normalization_reference :  #should be a value in the Protein column
+  summaryMethod : TMP # "TMP"(default) means Tukey's median polish, which is robust estimation method. "linear" uses linear mixed model. "logOfSum" conducts log2 (sum of intensities) per run.
+  censoredInt : NA  # Missing values are censored or at random. 'NA' (default) assumes that all 'NA's in 'Intensity' column are censored. '0' uses zero intensities as censored intensity. In this case, NA intensities are missing at random. The output from Skyline should use '0'. Null assumes that all NA intensites are randomly missing.
+  cutoffCensored : minFeature  # Cutoff value for censoring. only with censoredInt='NA' or '0'. Default is 'minFeature', which uses minimum value for each feature.'minFeatureNRun' uses the smallest between minimum value of corresponding feature and minimum value of corresponding run. 'minRun' uses minumum value for each run.
+  MBimpute : 1 # only for summaryMethod="TMP" and censoredInt='NA' or '0'. TRUE (default) imputes 'NA' or '0' (depending on censoredInt option) by Accelated failure model. FALSE uses the values assigned by cutoffCensored.
+  feature_subset: all # all|highQuality  : highQuality seems to be buggy right now
+```
+
+If enables (1), it will run MSstats with all the specified options 
+(read MSstats manual to find out more)
+
+```
+output_extras :
+  enabled : 1
+  msstats_output : 
+  annotate : 0 # 1|0 whether to annotate the proteins in the results or not
+  species : HUMAN # can use multiple species, but separate with a "-" eg. HUMAN-MOUSE-HIV-...
+  annotation_dir : /path/to/the/files
+  comparisons : all # or any grep expression that returns a subset of the contrasts file
+  LFC : -1 1
+  FDR : 0.05
+  heatmap : 1 
+  heatmap_cluster_cols : 0
+  heatmap_display : log2FC #or pvalue
+  volcano : 1
+```
+
+Extra actions to perform based on the MSstats results.
+
+
+#### Special case: Protein fractionation
 
 To handle protein fractionation experiments, two options need to be activated
 
-1. the keys file must contain and additional column named "FractionKey" with the information about fractionation. For example:
+1. the keys file must contain and additional column named "FractionKey" with 
+the information about fractionation. For example:
 
 **Raw.file**|**IsotopeLabelType**|**Condition**|**BioReplicate**|**Run**|**FractionKey**
 :-----:|:-----:|:-----:|:-----:|:-----:|:-----:
@@ -135,12 +237,47 @@ S9526\_Fx10|L|AB|AB-3|3|10
 Internally, the function `getMSstatsFormat` handles the key step 
 (just a simple `sum` aggregation)
 
-2. Enable `aggregation` in the configuration file like this:
+2. Enable *fractions* in the configuration file as follow:
 
 ```
-aggregation: 
-  enabled : 1 # 1 for Fractions, 0 otherwise
-  aggregate_fun : sum # other options available: median, mean (not recommended)
+fractions: 
+  enabled : 1 # 1 for protein fractions
+  aggregate_fun : sum
+```
+
+#### Special case: SILAC
+
+One of the most widely used techniques that enable relative protein 
+quantitation is stable isotope labeling by amino acids in cell culture (SILAC). 
+The keys file will capture the typical SILAC experiment. 
+For example, let's show a SILAC experiment with two conditions, 
+two biological replicates and two technical replicates:
+
+**RawFile**|**IsotopeLabelType**|**Condition**|**BioReplicate**|**Run**
+:-----:|:-----:|:-----:|:-----:|:-----:
+QE20140321-01|H|iso|iso-1|1
+QE20140321-02|H|iso|iso-1|2
+QE20140321-04|L|iso|iso-2|3
+QE20140321-05|L|iso|iso-2|4
+QE20140321-01|L|iso\_M|iso\_M-1|1
+QE20140321-02|L|iso\_M|iso\_M-1|2
+QE20140321-04|H|iso\_M|iso\_M-2|3
+QE20140321-05|H|iso\_M|iso\_M-2|4
+
+It is also required to activate the *silac* option in the yaml file to be 
+activated as follow:
+
+```
+silac: 
+  enabled : 1 # 1 for SILAC experiments
+```
+
+## Running MSstats v3
+
+### `MSstats_main.R`
+
+```
+MSstats_main.R -c configuration_file.yaml
 ```
 
 ### `MaxQ_utilities.R`
@@ -276,7 +413,8 @@ Arguments:
 
 ##### saint-format
 
-Converts the MaxQuant evidence file to the 3 required files for SAINTexpress. One can choose to either use the `spectral counts` or the `intensities` for the analysis. 
+Converts the MaxQuant evidence file to the 3 required files for SAINTexpress. 
+One can choose to either use the `spectral counts` or the `intensities` for the analysis. 
 
 ```
 Arguments:
