@@ -16,7 +16,7 @@ suppressMessages(library(ggplot2))
 #########################
 ## CONFIG LOADING #######
 
-ALLOWED_COMMANDS = c('concat','convert-silac','keys','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist', 'mistint', 'samplequant', 'replicateplots')
+ALLOWED_COMMANDS = c('keys','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist', 'mistint', 'samplequant', 'replicateplots')
 
 spec = matrix(c(
   'verbose', 'v', 2, "integer", "",
@@ -59,7 +59,7 @@ if( is.null(opt$lfc_upper) ) { opt$lfc_upper = '2' }
 if( is.null(opt$q_value) ) { opt$q_value = '0.05' }
 if( is.null(opt$labels) ) { opt$labels = '*' }
 
-loadLibs = function(){
+loadLibs <- function(){
   cat(">> LOADING EXTERNAL FILES AND LIBRARIES\n")
   # set source directory
   args <- commandArgs(trailingOnly = F) 
@@ -73,36 +73,8 @@ loadLibs = function(){
   }
 }
 
-MQutil.concat = function(filenames, output){
-  library(data.table)
-  files = Sys.glob(filenames)
-  cat(sprintf('\tPROCESSING:\n\t%s\n',paste(files,collapse='\n\t')))
-  
-  res = NULL
-  unique_files = c()
-  
-  for(f in 1:length(files)){
-    file = files[f]
-    tmp = fread(file, stringsAsFactors=F, colClasses = c(Intensity='character'), integer64 = 'double')
-    tmp$Intensity = as.numeric(tmp$Intensity)
-    #tmp$Intensity L = as.numeric(tmp[,'Intensity L',with=F])
-    
-    unique_files_current = unique(tmp[['Raw file']])
-    if(!is.null(intersect(unique_files_current,unique_files)) && length(intersect(unique_files_current,unique_files))>0) cat(sprintf('\tWARNING DUPLICATE RAW FILE ENTRIES IN FILE %s:\t%s\n',file, paste(intersect(unique_files_current, unique_files),collapse=',')))
-    select_colnames = grep('Raw\ file|Intensity|Proteins|Modifications|Sequence|Modified\ sequence|Charge|Protein\ group\ IDs|id|Retention\ time|Reverse|Contaminant',colnames(tmp), ignore.case = F)
-    tmp = tmp[,select_colnames,with=F]
-    res = rbind(res, tmp, fill=T)
-    unique_files = c(unique_files, unique_files_current)  
-  }
-  
-  cat(sprintf('\tWRITING\t%s\n',output))
-  write.table(res, file=output, eol='\n', sep='\t', quote=F, row.names=F, col.names=T)
-  cat(sprintf('\tWRITING\t%s\n',gsub('.txt','-keys.txt',output)))
-  #print(unique_files)
-  write.table(unique_files, file=gsub('.txt','-keys.txt',output), eol='\n', sep='\t', quote=F, row.names=F, col.names=F)
-}
 
-MQutil.getKeys = function(filename, output){
+MQutil.getKeys <- function(filename, output){
   library(data.table)
   file = Sys.glob(filename)
   cat(sprintf('\tPROCESSING:\n\t%s\n',paste(file,collapse='\n\t')))
@@ -230,7 +202,7 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
 }
 
 
-MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/Box Sync/db/mist/', species='HUMAN'){
+MQutil.annotate <- function(input_file=opt$input, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/Box Sync/db/mist/', species='HUMAN'){
   cat(">> ANNOTATING\n")
   results = read.delim(input_file, stringsAsFactors=F, sep='\t')
   
@@ -293,7 +265,7 @@ MQutil.annotate = function(input_file=opt$input, output_file=opt$output, uniprot
 }
 
 
-MQutil.resultsWide = function(input_file, output_file){
+MQutil.resultsWide <- function(input_file, output_file){
   input = fread(input_file, integer64 = 'double')
   input_l = melt(data = input[,c('Protein', 'Label','log2FC','adj.pvalue'),with=F],id.vars=c('Protein', 'Label'))
   
@@ -302,7 +274,7 @@ MQutil.resultsWide = function(input_file, output_file){
   write.table(input_w, file=output_file, eol='\n', sep='\t', quote=F, row.names=F, col.names=T)
 }
 
-MQutil.mapSitesBack = function(input_file, mapping_file, output_file){
+MQutil.mapSitesBack <- function(input_file, mapping_file, output_file){
   input = fread(input_file, integer64 = 'double')
   setnames(input,'Protein','mod_sites')
   mapping = fread(mapping_file, integer64 = 'double')
@@ -313,7 +285,7 @@ MQutil.mapSitesBack = function(input_file, mapping_file, output_file){
 }
 
 
-MQutil.plotHeat = function(input_file, output_file, labels=NULL, names='Protein', cluster_cols=F, display='log2FC', row_names='Protein', col_names='Label'){
+MQutil.plotHeat <- function(input_file, output_file, labels=NULL, names='Protein', cluster_cols=F, display='log2FC', row_names='Protein', col_names='Label'){
   heat_data = fread(input_file, integer64 = 'double')
   #heat_data = mss_F[,c('uniprot_id','Label','log2FC')]
   
@@ -352,7 +324,7 @@ MQutil.plotHeat = function(input_file, output_file, labels=NULL, names='Protein'
 }
 
 ## still need to make fileType, conditions, cluster_cols, display configurable through command line
-MQutil.plotHeatmap = function(input_file, output_file, fileType='l', labels='*', cluster_cols=F, display='log2FC', lfc_lower=-2, lfc_upper=2, FDR=0.05){
+MQutil.plotHeatmap <- function(input_file, output_file, fileType='l', labels='*', cluster_cols=F, display='log2FC', lfc_lower=-2, lfc_upper=2, FDR=0.05){
   ## read input
   input = read.delim(input_file, stringsAsFactors = F)
   
@@ -373,13 +345,13 @@ MQutil.plotHeatmap = function(input_file, output_file, fileType='l', labels='*',
   heat_data_w = plotHeat(mss_F=sign_hits, out_file=output_file, names=heat_labels, cluster_cols=cluster_cols, display=display)  
 }
 
-MQutil.simplify = function(input_file, output_file){
+MQutil.simplify <- function(input_file, output_file){
   input = fread(input_file, integer64 = 'double')
   output = simplifyOutput(input)
   write.table(output, file=output_file, sep='\t', quote=F, row.names=F, col.names=T, eol = '\n')
 }
 
-MQutil.MaxQToSaint = function(data_file, keys_file, ref_proteome_file, quant_variable='spectral_count', output_file){
+MQutil.MaxQToSaint <- function(data_file, keys_file, ref_proteome_file, quant_variable='spectral_count', output_file){
   cat(">> CONVERTING TO SAINT FORMAT\n")
   
   data = fread(data_file, integer64 = 'double')
@@ -459,7 +431,7 @@ MQutil.MaxQToSaint = function(data_file, keys_file, ref_proteome_file, quant_var
   write.table(saint_interactions,file = gsub('.txt','-saint-interactions.txt',output_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
 }
 
-MQutil.dataPlots = function(input_file, output_file){
+MQutil.dataPlots <- function(input_file, output_file){
   
   data_mss = fread(input_file, integer64 = 'double')
   unique_subjects = unique(data_mss$PROTEIN)
@@ -486,7 +458,7 @@ MQutil.dataPlots = function(input_file, output_file){
   dev.off()
 }
 
-MQutil.spectralCounts = function(input_file, keys_file, output_file){
+MQutil.spectralCounts <- function(input_file, keys_file, output_file){
   data = fread(input_file, integer64 = 'double')
   keys = fread(keys_file, integer64 = 'double')
   
@@ -506,7 +478,7 @@ MQutil.spectralCounts = function(input_file, keys_file, output_file){
 
 
 # Convert MaxQuant file into a Protein Prospector like format to run through the Mist pipeline
-MQutil.MISTformat = function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/Box Sync/db/mist/'){
+MQutil.MISTformat <- function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/Box Sync/db/mist/'){
   cat('\tREADING IN DATA AND KEYS\n')
 
   data <- data.table(read.delim(input_file, stringsAsFactors=F))
@@ -588,7 +560,7 @@ MQutil.MISTformat = function(input_file, keys_file, output_file, species="HUMAN"
 }
 
 # Convert MaxQuant file into a Protein Prospector like format to run through the Mist pipeline
-MQutil.MISTINTformat = function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/Box Sync/db/mist/'){
+MQutil.MISTINTformat <- function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/Box Sync/db/mist/'){
   cat('\n\n>>Generating input files for MIST using INTENSITY VALUES\n\n')
   cat('\tREADING IN DATA AND KEYS\n')
   
@@ -787,7 +759,6 @@ MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
 }
 
 
-
 # create the replicate plots based on the pairings from the replicate plot file.
 MQutil.replicatePlots <- function(input_file, keys_file, replicate_file, out_file){
   cat(">> READIN IN FILES...\n")
@@ -861,17 +832,11 @@ MQutil.replicatePlots <- function(input_file, keys_file, replicate_file, out_fil
   
 }
 
-
-
 main <- function(opt){
   if(opt$command %in% ALLOWED_COMMANDS){
     cat(sprintf('>> EXECUTING:\t%s\n',opt$command))
     loadLibs()
-    if(opt$command == 'concat'){
-      MQutil.concat(filenames=opt$files, output = opt$output)
-    }else if(opt$command == 'convert-silac'){
-      MQutil.SILACToLong(filename = opt$files, output = opt$output)
-    }else if(opt$command == 'keys'){
+    if(opt$command == 'keys'){
       MQutil.getKeys(filename = opt$files, output = opt$output)
     }else if(opt$command == 'convert-sites'){
       MQutil.ProteinToSiteConversion (maxq_file = opt$files, output_file = opt$output, ref_proteome_file = opt$proteome, mod_type = opt$mod_type)
@@ -928,14 +893,6 @@ main <- function(opt){
 # opt$input = '~/Projects/HPCKrogan/Data/FluOMICS/projects/Proteomics/Flu-human-exvivo/H5N1/ph//results//20141214//FLU-HUMAN-H5N1-PH-results-mapped.txt'
 # opt$output = '~/Projects/HPCKrogan/Data/FluOMICS/projects/Proteomics/Flu-human-exvivo/H5N1/ph//results//20141214//FLU-HUMAN-H5N1-PH-results-mapped-ann.txt'
 
-# opt$command = 'convert-silac'
-# opt$files = '~/Code/RMSQ/tests/abundance/ENTERO-LG-ABU-data.txt'
-# opt$output = '~/Code/RMSQ/tests/abundance/ENTERO-LG-ABU-data-long.txt'
-
-# opt$command = 'concat'
-# opt$files = '~/Projects/HPCKrogan/Data/Mtb/Files/073113*evidence.txt'
-# opt$output = '~/Projects/HPCKrogan/Data/HIV-proteomics/Meena/abundance/HIV_vs_MOCK_PROTEIN_evidence_split.txt'
-
 # opt$command = 'convert-sites'
 # opt$files =  '~/Projects/HPCKrogan/Data/HIV-proteomics/data//UB-silac//HIV-UB-SILAC-KROGAN-data.txt' 
 # opt$output = '~/Projects/HPCKrogan/Data/HIV-proteomics/data//UB-silac//HIV-UB-SILAC-KROGAN-data-modK.txt'
@@ -983,6 +940,7 @@ main <- function(opt){
 # opt$files = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/results/MSstats3-results-mss-sampleQuant.txt'
 # opt$contrast_file = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/data/contrasts.txt'
 # opt$results_file = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/results/MSstats3-results-wide-annotated.txt'
+
 
 
 main(opt)
