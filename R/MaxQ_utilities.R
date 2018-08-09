@@ -73,6 +73,7 @@ loadLibs <- function(){
   }
 }
 
+# ------------------------------------------------------------------------------
 #' @title Get the Raw.files from an evidence file
 #' @description Get the Raw.files from an evidence file
 #' @param filename The file location and name of the evidence file
@@ -90,7 +91,26 @@ MQutil.getRawFiles <- function(filename, output){
   cat(sprintf('\tWRITTEN\t%s\n',output))
 }
 
-
+# ------------------------------------------------------------------------------
+#' @title Converts the Protein IDs column of the evidence file to site-specific
+#' Uniprot_PTM notation
+#' @description It enables the site-specific quantification of PTMs by
+#' converting the `Proteins` column of the evidence file into a `Uniprot_PTM`
+#' notation. In this way, each of the modified peptides can be quantified
+#' independently
+#' @param maxq_file The evidence file name and location
+#' @param ref_proteome_file The reference proteome (to map the peptide
+#' to the protein sequence and find out the site location)
+#' @param output_file Output file name (-sites-evidence.txt recommended)
+#' @param mod_type The posttranslational modification. Options: `ub`, `ph`, or 
+#' `ac`
+#' @return Return a new evidence file with the `Proteins` column modified by
+#' adding the sequence site location(s) + postranslational modification(s) 
+#' to the uniprot entry id. Examples: A34890_ph3; Q64890_ph24_ph456;
+#' Q64890_ub34_ub129_ub234; Q64890_ac35.
+#' @keywords
+#' ProteinToSiteConversion()
+#' @export
 MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output_file, mod_type='ub') {
   
   if(mod_type=='ub'){
@@ -104,12 +124,12 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
     mod_residue = 'K'
   }
   
-  ## read in ref. proteome
+  ## read in reference proteome
+
   ref_proteome = read.fasta(file = ref_proteome_file, 
                             seqtype = "AA", as.string = T,
                             set.attributes = TRUE, legacy.mode = TRUE, seqonly = FALSE, strip.desc = FALSE)
   
-  ######################
   ## make mod-site index
   
   p_seqs = c()
@@ -131,10 +151,8 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
   keys = rep(ref_table$uniprot_ac, lengths)
   protein_indices = data.table(uniprot_ac=keys, ptm_site=unlist(ptm_sites), res_index = unlist(indices))
   
-  #################################
   ## map mod sites in data to index 
-  
-  ## read in maxq. data
+
   maxq_data = fread(maxq_file, integer64 = 'double')
   maxq_data = maxq_data[grep("CON__|REV__",maxq_data$Proteins, invert=T),]
   unique_peptides_in_data = unique(maxq_data[,c('Proteins','Modified sequence'),with=F])
@@ -201,6 +219,7 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
   write.table(final_data, file = output_file, eol='\n', sep='\t',quote=F, row.names=F, col.names=T)
   
   ## write a mapping table
+
   protein_seq_mapping = unique(maxq_data[,c('Proteins','mod_seqs'),with=F])
   setnames(protein_seq_mapping,'Proteins','Protein')
   mapping_table = merge(protein_seq_mapping, mod_site_mapping_agg, by='mod_seqs', all=T)

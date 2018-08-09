@@ -337,7 +337,12 @@ Arguments:
 
 ##### convert-sites
 
-This function is a preprocessing function that is used with PTM data. If you want to run a site specific analysis, before running  MSStats on a UB/PH/AC set, you need to convert the evidence file into a format that MSStats will be able to diffentiate the sites with. This outputs a new file that should be used as the input file for your MSStats group conparison analysis.
+This function is a preprocessing function that is used with PTM data. 
+If you want to run a site specific analysis, before running 
+MSStats on a PH/UB/AC set, you need to convert the evidence file into a format 
+that MSStats will be able to diffentiate the sites with. 
+This function outputs a new file that should be used as the input file for your 
+MSStats group comparison analysis.
 
 ```
 Arguments:
