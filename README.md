@@ -324,9 +324,19 @@ Arguments:
 ```
 
 
-##### keys
+##### getRawFiles
+
+Get the list of unique Raw.files from an evidence file.
+
+```
+Arguments:
+-c getRawFiles
+-f evidence_file_path
+-o output_file_path
+```
 
 ##### convert-sites
+
 This function is a preprocessing function that is used with PTM data. If you want to run a site specific analysis, before running  MSStats on a UB/PH/AC set, you need to convert the evidence file into a format that MSStats will be able to diffentiate the sites with. This outputs a new file that should be used as the input file for your MSStats group conparison analysis.
 
 ```

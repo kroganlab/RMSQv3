@@ -16,7 +16,7 @@ suppressMessages(library(ggplot2))
 #########################
 ## CONFIG LOADING #######
 
-ALLOWED_COMMANDS = c('keys','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist', 'mistint', 'samplequant', 'replicateplots')
+ALLOWED_COMMANDS = c('getRawFiles','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist', 'mistint', 'samplequant', 'replicateplots')
 
 spec = matrix(c(
   'verbose', 'v', 2, "integer", "",
@@ -73,14 +73,20 @@ loadLibs <- function(){
   }
 }
 
-
-MQutil.getKeys <- function(filename, output){
+#' @title Get the Raw.files from an evidence file
+#' @description Get the Raw.files from an evidence file
+#' @param filename The file location and name of the evidence file
+#' @param output (File location and) name for the output
+#' @return The unique list of Raw.files from the evidence file.
+#' @keywords evidence, rawfiles
+#' getRawFiles()
+#' @export
+MQutil.getRawFiles <- function(filename, output){
   library(data.table)
   file = Sys.glob(filename)
   cat(sprintf('\tPROCESSING:\n\t%s\n',paste(file,collapse='\n\t')))
-  #tmp = data.table(read.delim(file, stringsAsFactors=F))
   tmp = fread(file, stringsAsFactors=F, integer64 = 'double')
-  write.table(unique(tmp$Raw.file),file=output, eol='\n', sep='\t', quote=F, row.names=F, col.names=F)
+  write.table(unique(tmp$`Raw file`),file=output, eol='\n', sep='\t', quote=F, row.names=F, col.names=F)
   cat(sprintf('\tWRITTEN\t%s\n',output))
 }
 
@@ -836,8 +842,8 @@ main <- function(opt){
   if(opt$command %in% ALLOWED_COMMANDS){
     cat(sprintf('>> EXECUTING:\t%s\n',opt$command))
     loadLibs()
-    if(opt$command == 'keys'){
-      MQutil.getKeys(filename = opt$files, output = opt$output)
+    if(opt$command == 'getRawFiles'){
+      MQutil.getRawFiles(filename = opt$files, output = opt$output)
     }else if(opt$command == 'convert-sites'){
       MQutil.ProteinToSiteConversion (maxq_file = opt$files, output_file = opt$output, ref_proteome_file = opt$proteome, mod_type = opt$mod_type)
     }else if(opt$command == 'annotate'){
