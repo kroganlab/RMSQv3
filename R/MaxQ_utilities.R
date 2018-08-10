@@ -16,7 +16,7 @@ suppressMessages(library(ggplot2))
 #########################
 ## CONFIG LOADING #######
 
-ALLOWED_COMMANDS = c('getRawFiles','convert-sites','annotate','results-wide','mapback-sites','heatmap','simplify','saint-format','data-plots','spectral-counts', 'mist', 'mistint', 'samplequant', 'replicateplots')
+ALLOWED_COMMANDS = c('getRawFiles','convert-sites','annotate','results-wide','mapback-sites','heatmap','saint-format','data-plots','spectral-counts', 'mist', 'mistint', 'samplequant', 'replicateplots')
 
 spec = matrix(c(
   'verbose', 'v', 2, "integer", "",
@@ -399,12 +399,6 @@ MQutil.plotHeatmap <- function(input_file, output_file, labels='*', cluster_cols
   
   heat_labels = gsub('\\sNA$','',heat_labels)
   heat_data_w = plotHeat(mss_F=sign_hits, out_file=output_file, names=heat_labels, cluster_cols=cluster_cols, display=display)  
-}
-
-MQutil.simplify <- function(input_file, output_file){
-  input = fread(input_file, integer64 = 'double')
-  output = simplifyOutput(input)
-  write.table(output, file=output_file, sep='\t', quote=F, row.names=F, col.names=T, eol = '\n')
 }
 
 MQutil.MaxQToSaint <- function(data_file, keys_file, ref_proteome_file, quant_variable='spectral_count', output_file){
@@ -906,8 +900,6 @@ main <- function(opt){
       MQutil.mapSitesBack(input_file = opt$files, output_file = opt$output , mapping_file = opt$mapping)
     }else if(opt$command == 'heatmap'){
       MQutil.plotHeatmap(input_file = opt$files, output_file = opt$output, labels = opt$labels, lfc_lower = opt$lfc_lower, lfc_upper=opt$lfc_upper, FDR = opt$q_value)
-    }else if(opt$command == 'simplify'){
-      MQutil.simplify(input_file = opt$files, output_file = opt$output)
     }else if(opt$command == 'saint-format'){
       MQutil.MaxQToSaint(data_file = opt$files, keys_file =  opt$keys, ref_proteome_file = opt$proteome, quant_variable = opt$identifier_column, output_file = opt$output)
     }else if(opt$command == 'data-plots'){
@@ -971,10 +963,6 @@ main <- function(opt){
 # opt$command = 'heatmap'
 # opt$files =  '~/Projects/HPCKrogan/Data/FluOMICS/projects/Proteomics/Flu-mouse-invivo/H1N1/ub/results/20150114/FLU-MOUSE-H1N1-UB-results-ann.txt'
 # opt$output = '~/Projects/HPCKrogan/Data/FluOMICS/projects/Proteomics/Flu-mouse-invivo/H1N1/ub/results/20150114/FLU-MOUSE-H1N1-UB-results-ann.pdf'
-
-# opt$command = 'simplify'
-# opt$files =  '~/Projects/HPCKrogan/Data/FluOMICS/projects/Proteomics/Flu-mouse-invivo/H1N1/ub/results/20150114-sites/FLU-MOUSE-H1N1-UB-results.txt'
-# opt$output = '~/Projects/HPCKrogan/Data/FluOMICS/projects/Proteomics/Flu-mouse-invivo/H1N1/ub/results/20150114-sites/FLU-MOUSE-H1N1-UB-results-simplified.txt'
 
 # opt$command = 'heatmap'
 # opt$files =  '~/Code/RMSQ/tests/heatmap/031615-lm-1-6-ph-mss-results.txt'

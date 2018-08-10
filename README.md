@@ -417,7 +417,12 @@ Arguments:
 
 ##### replicateplots
 
-Outputs a replicate plots based on a user provied file containing the replicates to be compared. Values are based on the log2 value of the maximum intensities per modified sequence. The "replicate file" should describe which replicates of which conditions should be compared against eachother. Each row represents a replicate plot to be created. The file should be structured using the following format and column names:
+Outputs a replicate plots based on a user provied file containing the 
+replicates to be compared. Values are based on the log2 value of the 
+maximum intensities per modified sequence. The "replicate file" should 
+describe which replicates of which conditions should be compared against 
+each other. Each row represents a replicate plot to be created. 
+The file should be structured using the following format and column names:
 
 | condition1 | rep1_1 | rep1_2 | condition2 | rep2_1 | rep2_2 |
 |---|---|---|---|---|---|
@@ -435,8 +440,6 @@ Arguments:
 -r replicate_plot_info_file_path
 -o output_file_path
 ```
-
-##### simplify
 
 ##### saint-format
 
@@ -469,7 +472,11 @@ Arguments:
 
 ##### mist
 
-Converts MaxQuant evidence file into a file format compatible with the MiST pipeline using `MS/MS.Count`. Note that this is the MiST *data* file, and that an additional *keys* file will have to be constructed before running MiST. Multiple species can be searched at once, simply separate them by a "-". (eg. `HUMAN-MOUSE`)
+Converts MaxQuant evidence file into a file format compatible with the MiST 
+pipeline using `MS/MS.Count`. Note that this is the MiST *data* file, 
+and that an additional *keys* file will have to be constructed before 
+running MiST. Multiple species can be searched at once, simply separate 
+them by a "-". (eg. `HUMAN-MOUSE`)
 
 ```
 Arguments:
