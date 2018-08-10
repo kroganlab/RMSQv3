@@ -361,46 +361,26 @@ MQutil.mapSitesBack <- function(input_file, mapping_file, output_file){
 }
 
 
-MQutil.plotHeat <- function(input_file, output_file, labels=NULL, names='Protein', cluster_cols=F, display='log2FC', row_names='Protein', col_names='Label'){
-  heat_data = fread(input_file, integer64 = 'double')
-  #heat_data = mss_F[,c('uniprot_id','Label','log2FC')]
-  
-  ## good
-  if(display=='log2FC'){
-    heat_data_w = dcast(names ~ Label, data=heat_data, value.var='log2FC')  
-  }else if(display=='pvalue'){
-    heat_data$adj.pvalue = -log10(heat_data$adj.pvalue+10^-16)  
-    heat_data_w = dcast(names ~ Label, data=heat_data, value.var='adj.pvalue')  
-  }
-  
-  ## try
-  
-  #gene_names = uniprot_to_gene_replace(uniprot_ac=heat_data_w$Protein)
-  rownames(heat_data_w) = heat_data_w$names
-  heat_data_w = heat_data_w[,-1]
-  heat_data_w[is.na(heat_data_w)]=0
-  max_val = ceiling(max(heat_data_w))
-  min_val = floor(min(heat_data_w))
-  extreme_val = max(max_val, abs(min_val))
-  if(extreme_val %% 2 != 0) extreme_val=extreme_val+1
-  bin_size=2
-  signed_bins = (extreme_val/bin_size)
-  colors_neg = rev(colorRampPalette(brewer.pal("Blues",n=extreme_val/bin_size))(signed_bins))
-  colors_pos = colorRampPalette(brewer.pal("Reds",n=extreme_val/bin_size))(signed_bins)
-  colors_tot = c(colors_neg, colors_pos)
-  
-  if(is.null(labelOrder)){
-    pheatmap(heat_data_w, scale="none", cellheight=10, cellwidth=10, filename =out_file, color=colors_tot, breaks=seq(from=-extreme_val, to=extreme_val, by=bin_size), cluster_cols=cluster_cols, fontfamily="mono")  
-  }else{
-    heat_data_w = heat_data_w[,labelOrder]
-    pheatmap(heat_data_w, scale="none", cellheight=10, cellwidth=10, filename=out_file, color=colors_tot, breaks=seq(from=-extreme_val, to=extreme_val, by=bin_size), cluster_cols=cluster_cols, fontfamily="mono")
-  }
-  
-  heat_data_w
-}
-
-## still need to make fileType, conditions, cluster_cols, display configurable through command line
-MQutil.plotHeatmap <- function(input_file, output_file, fileType='l', labels='*', cluster_cols=F, display='log2FC', lfc_lower=-2, lfc_upper=2, FDR=0.05){
+# ------------------------------------------------------------------------------
+#' @title Outputs a heatmap of the MSStats results created using the log2fold 
+#' changes
+#' 
+#' @description Outputs a heatmap of the MSStats results created using the 
+#' log2 fold changes.
+#' @param input_file MSstats `results.txt` file and location
+#' @param output_file Output file name (pdf format) and location
+#' @param labels Vector of uniprot ids if only specific labes would like to
+#' be plotted. Default: all labels
+#' @param cluster_cols `True` or `False` to cluster columns. Default: FALSE
+#' @param lfc_lower Lower limit for the log2fc. Default: -2
+#' @param lfc_upper Upper limit for the log2fc. Default: +2
+#' @param FDR Upper limit false discovery rate. Default: 0.05
+#' @return A heatmap in pdf format of the MSStats results using the 
+#' log2 fold changes.
+#' @keywords heatmap, log2fc
+#' MQutil.plotHeatmap()
+#' @export
+MQutil.plotHeatmap <- function(input_file, output_file, labels='*', cluster_cols=F, display='log2FC', lfc_lower=-2, lfc_upper=2, FDR=0.05){
   ## read input
   input = read.delim(input_file, stringsAsFactors = F)
   
@@ -506,6 +486,8 @@ MQutil.MaxQToSaint <- function(data_file, keys_file, ref_proteome_file, quant_va
   write.table(saint_preys,file = gsub('.txt','-saint-preys.txt',output_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
   write.table(saint_interactions,file = gsub('.txt','-saint-interactions.txt',output_file), eol='\n',sep='\t', quote=F, row.names=F, col.names=F)
 }
+
+
 
 MQutil.dataPlots <- function(input_file, output_file){
   
