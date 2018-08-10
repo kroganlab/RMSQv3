@@ -227,6 +227,27 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
 }
 
 
+
+#' @title Annotate Gene Symbol based on uniprot ids
+#' 
+#' @description Annotates the proteins in the results or results-wide files 
+#' after they've been through the MSStats pipeline. Multiple species can be 
+#' searched at once, simply separate them by a "-". (eg. human-mouse)
+#' @param input_file Input file name
+#' @param output_file Output file name
+#' @param uniprot_ac_col Column name containing the uniprot entry ids
+#' @param group_sep if protein groups expected (i.e., several protein ids in
+#' one cell), specified the separation character used. Default: semicolon (`;`)
+#' @param uniprot_dir Directory with the uniprot files with the mapping 
+#' information. Default '~/Box Sync/db/mist/'
+#' @param species name of the specie as specified in the uniprot file name.
+#' Example: `HUMAN` for `uniprot_protein_descriptions_HUMAN.txt`. If two or more
+#' species are expected, use dash to separate the names: `HUMAN-HIV`
+#' @return Same as the input file but with extra columns with the extra 
+#' annotations based on mapping the uniprot id
+#' @keywords annotation, mapping
+#' MQutil.annotate()
+#' @export
 MQutil.annotate <- function(input_file=opt$input, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/Box Sync/db/mist/', species='HUMAN'){
   cat(">> ANNOTATING\n")
   results = read.delim(input_file, stringsAsFactors=F, sep='\t')
@@ -289,7 +310,21 @@ MQutil.annotate <- function(input_file=opt$input, output_file=opt$output, unipro
   cat(">> ANNOTATING COMPLETE!\n")
 }
 
-
+# ------------------------------------------------------------------------------
+#' @title Reshape the MSstats results file from long to wide format
+#' 
+#' @description Converts the normal MSStats output file into "wide" format 
+#' where each row represents a protein's results, and each column represents 
+#' the comparison made by MSStats. The fold change and p-value of each 
+#' comparison will be it's own column.
+#' @param input_file Input file name and location
+#' @param output_file Wished output file name and location
+#' @return Reshaped file with unique protein ids and as many columns log2fc
+#' and adj.pvalues as comparisons available
+#' for as many 
+#' @keywords
+#' MQutil.resultsWide()
+#' @export
 MQutil.resultsWide <- function(input_file, output_file){
   input = fread(input_file, integer64 = 'double')
   input_l = melt(data = input[,c('Protein', 'Label','log2FC','adj.pvalue'),with=F],id.vars=c('Protein', 'Label'))
@@ -299,6 +334,22 @@ MQutil.resultsWide <- function(input_file, output_file){
   write.table(input_w, file=output_file, eol='\n', sep='\t', quote=F, row.names=F, col.names=T)
 }
 
+
+# ------------------------------------------------------------------------------
+#' @title Map back the unique Uniprot IDs (without the site annotation)
+#' 
+#' @description Used with PTM datasets. Map back the sites to correct proteins 
+#' after MSStats analysis. This file is created previously when running the 
+#' `conver-sites` function.
+#' @param input_file Input file name (and location)
+#' @param mapping_file mapping file (generated using `convert-sites`)
+#' @param output_file Output file name (and location)
+#' @return A new file with an extra column named `mod_sites` which it was the
+#' input's `Protein` column. The new `Protein` column contains only the unique
+#' uniprot ids. 
+#' @keywords
+#' MQutil.mapSitesBack()
+#' @export
 MQutil.mapSitesBack <- function(input_file, mapping_file, output_file){
   input = fread(input_file, integer64 = 'double')
   setnames(input,'Protein','mod_sites')

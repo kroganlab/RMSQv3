@@ -282,14 +282,19 @@ MSstats_main.R -c configuration_file.yaml
 
 ### `MaxQ_utilities.R`
 
-These functions are designed to work with MaxQuant evidence files. The functions include a wide variety of options listed below.
+These functions are designed to work with MaxQuant evidence files. 
+The functions include a wide variety of options listed below.
 
-The `Arguments` section lists the arguments needed for each function. The arcuments (proceeded by the short flag alias -x) should be entered in the same line of the terminal, separated by spaces.
+The `Arguments` section lists the arguments needed for each function. 
+The arcuments (proceeded by the short flag alias -x) should be entered in the 
+same line of the terminal, separated by spaces.
 
 
 ## Typical workflows
 
-The RMSQ pipeline was designed to run in a certain order. The following is the propper order to perform the analysis with RMSQ for SILAC, PTM, and AMPS datasets.
+The RMSQ pipeline was designed to run in a certain order. 
+The following is the propper order to perform the analysis with RMSQ for SILAC, 
+PTM, and AMPS datasets.
 
 ##### PTM analysis
 
@@ -355,7 +360,9 @@ Arguments:
 
 ##### annotate
 
-Annotates the proteins in the results or results-wide files after they've been through the MSStats pipeline. Multiple species can be searched at once, simply separate them by a "-". (eg. human-mouse)
+Annotates the proteins in the results or results-wide files after they've 
+been through the MSStats pipeline. Multiple species can be searched at once, 
+simply separate them by a "-". (eg. human-mouse)
 
 ```
 Arguments:
@@ -368,7 +375,10 @@ Arguments:
 
 ##### results-wide
 
-Converts the normal MSStats output file into "wide" format where each row represents a protein's results, and each column represents the comparison made by MSStats. The fold change and p-value of each comparison will be it's own column.
+Converts the normal MSStats output file into "wide" format where each row 
+represents a protein's results, and each column represents the comparison made 
+by MSStats. The fold change and p-value of each comparison will be it's own 
+column.
 
 ```
 Arguments:
@@ -379,7 +389,9 @@ Arguments:
 
 ##### mapback-sites
 
-Used with PTM datasets. Map back the sites to correct proteins after MSStats analysis. This file is created previously when running the `conver-sites` function.
+Used with PTM datasets. Map back the sites to correct proteins after MSStats 
+analysis. This file is created previously when running the `conver-sites` 
+function.
 
 ```
 Arguments:
