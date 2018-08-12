@@ -260,7 +260,7 @@ MQutil.annotate <- function(input_file=opt$input, output_file=opt$output, unipro
   Uniprot = NULL
   for(org in species_split){
     cat(sprintf("\tLOADING %s\n",org))
-    tmp = read.delim2(sprintf("%s/uniprot_protein_descriptions_%s.txt",uniprot_dir,org), stringsAsFactors=F, quote="")    
+    tmp = read.delim(sprintf("%s/uniprot_protein_descriptions_%s.txt",uniprot_dir,org), stringsAsFactors=F, quote="")    
     if(is.null(Uniprot)){
       Uniprot = as.data.frame(tmp)
     }else{
@@ -401,6 +401,24 @@ MQutil.plotHeatmap <- function(input_file, output_file, labels='*', cluster_cols
   heat_data_w = plotHeat(mss_F=sign_hits, out_file=output_file, names=heat_labels, cluster_cols=cluster_cols, display=display)  
 }
 
+
+# ------------------------------------------------------------------------------
+#' @title MaxQuant evidence file to SAINTexpress format
+#' 
+#' @description Converts the MaxQuant evidence file to the 3 required files 
+#' for SAINTexpress. One can choose to either use the `spectral counts`
+#' (use `spectral_count`) or the `intensities` (use `ms1`) for the analysis. 
+#' @param data_file Maxquant evidence file
+#' @param keys_file Keys file with a SAINT column specifying the test (`T`) and
+#' control (`C`) conditions
+#' @param ref_proteome_file Reference proteome file in fasta format
+#' @param quant_variable choose either `spectral_counts` (spectral counts) 
+#' or `ms1`
+#' @param output_file Output file name
+#' @return The 3 required files by SAINTexpress
+#' @keywords SAINT, SAINTexpress, APMS
+#' MQutil.MaxQToSaint()
+#' @export
 MQutil.MaxQToSaint <- function(data_file, keys_file, ref_proteome_file, quant_variable='spectral_count', output_file){
   cat(">> CONVERTING TO SAINT FORMAT\n")
   
@@ -482,7 +500,17 @@ MQutil.MaxQToSaint <- function(data_file, keys_file, ref_proteome_file, quant_va
 }
 
 
-
+# ------------------------------------------------------------------------------
+#' @title Protein abundance dot plots
+#' 
+#' @description Protein abundance dot plots for each unique uniprot id
+#' @param input_file The `-normalized.txt` output file from MSstats
+#' @param output_file Wished output file name (add the `.pdf` extension)
+#' @return A pdf file with each individual protein abundance plot for each
+#' conditions
+#' @keywords abundance, dotplots, plot
+#' MQutil.dataPlots()
+#' @export
 MQutil.dataPlots <- function(input_file, output_file){
   
   data_mss = fread(input_file, integer64 = 'double')
@@ -510,6 +538,18 @@ MQutil.dataPlots <- function(input_file, output_file){
   dev.off()
 }
 
+# ------------------------------------------------------------------------------
+#' @title Outputs the spectral counts from the MaxQuant evidence file.
+#' 
+#' @description Outputs the spectral counts from the MaxQuant evidence file.
+#' @param input_file Maxquant evidence file
+#' @param keys_file Keys file with the experimental design
+#' @param output_file Output file name (add `.txt` extenstion)
+#' @return A txt file with biological replicates, protein id, and spectral 
+#' count columns
+#' @keywords spectral_counts, evidence
+#' MQutil.spectralCounts()
+#' @export
 MQutil.spectralCounts <- function(input_file, keys_file, output_file){
   data = fread(input_file, integer64 = 'double')
   keys = fread(keys_file, integer64 = 'double')
@@ -527,31 +567,58 @@ MQutil.spectralCounts <- function(input_file, keys_file, output_file){
   write.table(data_sel[,c('bait_name','Proteins','spectral_counts')], file=output_file, eol='\n', sep='\t', quote=F, row.names=F, col.names=T)
 }
 
-
-
-# Convert MaxQuant file into a Protein Prospector like format to run through the Mist pipeline
-MQutil.MISTformat <- function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/Box Sync/db/mist/'){
+# ------------------------------------------------------------------------------
+#' @title Convert MaxQuant file into a Protein Prospector like format to run 
+#' through the Mist pipeline using spectral counts.
+#' 
+#' @description Converts MaxQuant evidence file into a file format compatible 
+#' with the MiST pipeline using `MS/MS.Count`. Note that this is the 
+#' MiST *data* file, and that an additional *keys* file will have to be 
+#' constructed before running MiST. Multiple species can be searched at once, 
+#' simply separate them by a "-". (eg. `HUMAN-MOUSE`)
+#' @param input_file MaxQuant evidence file and location
+#' @param keys_file Keys file with the experimental details
+#' @param species Specie name. If several, used a `dash` symbol to separate them
+#' @param uniprot_dir Directory with the uniprot files with the mapping 
+#' information. Default '~/Box Sync/db/mist/'
+#' @return A MIST compatible input file
+#' @keywords mist, evidence, keys, apms
+#' MQutil.MISTformat()
+#' @export
+MQutil.MISTformat <- function(input_file, keys_file, output_file, species, uniprot_dir){
+  cat('\n>> GENERATING INPUT FILES FOR MIST USING MS.MS.Count\n')
   cat('\tREADING IN DATA AND KEYS\n')
-
+  
+  if(is.null(species)){
+    species <- "HUMAN"
+    cat("\t---species NOT SPECIFIED. USING DEFAULT: ",species,"\n")
+  }
+  
+  if(is.null(uniprot_dir)){
+    uniprot_dir <- '~/Box Sync/db/mist/'
+    cat("\t---uniprot_dir NOT SPECIFIED. USING DEFAULT:  ",uniprot_dir,"\n")
+  }
+  
   data <- data.table(read.delim(input_file, stringsAsFactors=F))
-  keys = data.table(read.delim(keys_file, stringsAsFactors = F))
+  keys <- data.table(read.delim(keys_file, stringsAsFactors = F))
   
-  tryCatch(setnames(data, 'Raw file', 'RawFile'), error=function(e) cat('Raw file in evidence not found: trying Raw.file instead\n'))
-  tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file in evidence not found: trying Raw file instead\n'))
-  tryCatch(setnames(keys, 'Raw file', 'RawFile'), error=function(e) cat('Raw file in keys not found: trying Raw.file instead\n'))
-  tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file in keys not found: trying Raw file instead\n'))
-  tryCatch(setnames(data,'MS/MS Count','ms_spectral_counts'), error=function(e) cat('MS/MS Count column not found in evidence file: trying MS.MS.Count instead\n'))
-  tryCatch(setnames(data,'MS.MS.Count','ms_spectral_counts'), error=function(e) cat('MS.MS.Count column not found in evidence file: trying MS/MS Count instead\n'))
-  tryCatch(setnames(data,'MS.MS.count','ms_spectral_counts'), error=function(e) cat('MS.MS.count column not found in evidence file: trying MS/MS Count instead\n'))
+  cat('\tCHECKING DATA AND KEYS COLUMN NAMES\n')
+  tryCatch(setnames(data, 'Raw file', 'RawFile'), error=function(e) cat('\t---Raw file in evidence not found: trying Raw.file instead\n'))
+  tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('\t---Raw.file in evidence not found: trying Raw file instead\n'))
+  tryCatch(setnames(keys, 'Raw file', 'RawFile'), error=function(e) cat('\t---Raw file in keys not found: trying Raw.file instead\n'))
+  tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('\t---Raw.file in keys not found: trying Raw file instead\n'))
+  tryCatch(setnames(data,'MS/MS Count','ms_spectral_counts'), error=function(e) cat('\t---MS/MS Count column not found in evidence file: trying MS.MS.Count instead\n'))
+  tryCatch(setnames(data,'MS.MS.Count','ms_spectral_counts'), error=function(e) cat('\t---MS.MS.Count column not found in evidence file: trying MS/MS Count instead\n'))
+  tryCatch(setnames(data,'MS.MS.count','ms_spectral_counts'), error=function(e) cat('\t---MS.MS.count column not found in evidence file: trying MS/MS Count instead\n'))
   
   
-  cat('\t\nVERIFYING DATA AND KEYS\n')
+  cat('\n\tVERIFYING DATA AND KEYS\n')
   if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
-  data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
-  data_sel = data[,c('Proteins','Condition','BioReplicate','Run','RawFile','ms_spectral_counts'),with=F]
+  data <- mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
+  data_sel <- data[,c('Proteins','Condition','BioReplicate','Run','RawFile','ms_spectral_counts'),with=F]
   
-  data_sel = aggregate( ms_spectral_counts ~ Proteins+Condition+BioReplicate+Run+RawFile, data=data_sel, FUN = sum)
-  data_sel = data.frame(data_sel, bait_name=paste(data_sel$Condition, data_sel$BioReplicate, data_sel$Run, sep='_'))
+  data_sel <- aggregate( ms_spectral_counts ~ Proteins+Condition+BioReplicate+Run+RawFile, data=data_sel, FUN = sum)
+  data_sel <- data.frame(data_sel, bait_name=paste(data_sel$Condition, data_sel$BioReplicate, data_sel$Run, sep='_'))
   
   # clean up proteins & annotate
   #~~~~~~~~~~~~~~~~~~~~~~~
@@ -582,7 +649,7 @@ MQutil.MISTformat <- function(input_file, keys_file, output_file, species="HUMAN
   Uniprot = NULL
   for(org in species_split){
     cat(sprintf("\tLOADING %s\n",org))
-    tmp = read.delim2(sprintf("%s/uniprot_protein_descriptions_%s.txt",uniprot_dir,org), stringsAsFactors=F, quote="")    
+    tmp <- read.delim(sprintf("%s/uniprot_protein_descriptions_%s.txt",uniprot_dir,org), stringsAsFactors=F, quote="")
     if(is.null(Uniprot)){
       Uniprot = as.data.frame(tmp)
     }else{
@@ -590,7 +657,7 @@ MQutil.MISTformat <- function(input_file, keys_file, output_file, species="HUMAN
     }
   }
   cat('\tANNOTATING RESULTS...\n')
-  results_annotated = merge(data_sel, Uniprot, all.x=T, by.x='ms_uniprot_ac',by.y='Entry')
+  results_annotated = merge(data_sel, Uniprot, all.x=T, by.x='ms_uniprot_ac', by.y='Entry')
   
   # Adding the Mass column: it is required for MIST for preprocessing!
   # For that, we will calculate the mass of the whole protein just taking the average molecular 
@@ -603,36 +670,64 @@ MQutil.MISTformat <- function(input_file, keys_file, output_file, species="HUMAN
   }
   
   write.table(results_annotated, file=output_file, eol='\n', sep='\t', quote=F, row.names=F, col.names=T)
-  cat('\nMIST FILES CREATED! Have a nice day :)\n')
+  cat('\n>> MIST FILES CREATED!\n')
   
   keysout <- subset(keys, select = c(RawFile, Condition))
-  keysname <- gsub(".txt",'_keys.txt', output_file)
+  keysname <- gsub(".txt",'_mistkeys.txt', output_file)
   write.table(keysout, file=keysname, eol = '\n', sep = '\t', quote = F, row.names = F, col.names = F)
-  cat('MIST keys FILE ALSO CREATED. Truly enjoy your day ;-)\n\n')
+  cat('>> MIST keys FILE ALSO CREATED. Enjoy your day!\n\n')
 }
 
-# Convert MaxQuant file into a Protein Prospector like format to run through the Mist pipeline
-MQutil.MISTINTformat <- function(input_file, keys_file, output_file, species="HUMAN", uniprot_dir='~/Box Sync/db/mist/'){
-  cat('\n\n>>Generating input files for MIST using INTENSITY VALUES\n\n')
+# ------------------------------------------------------------------------------
+#' @title Convert MaxQuant file into a Protein Prospector like format to run 
+#' through the Mist pipeline using MS1 Intensity values.
+#' 
+#' @description Converts MaxQuant evidence file into a file format compatible 
+#' with the MiST pipeline using `Intensity`. Note that this is the 
+#' MiST *data* file, and that an additional *keys* file will have to be 
+#' constructed before running MiST. Multiple species can be searched at once, 
+#' simply separate them by a "-". (eg. `HUMAN-MOUSE`)
+#' @param input_file MaxQuant evidence file and location
+#' @param keys_file Keys file with the experimental details
+#' @param species Specie name. If several, used a `dash` symbol to separate them
+#' @param uniprot_dir Directory with the uniprot files with the mapping 
+#' information. Default '~/Box Sync/db/mist/'
+#' @return A MIST compatible input file
+#' @keywords mist, evidence, keys, apms
+#' MQutil.MISTINTformat()
+#' @export
+MQutil.MISTINTformat <- function(input_file, keys_file, output_file, species, uniprot_dir){
+  cat('\n>> GENERATING INPUT FILES FOR MIST USING Intensity\n')
   cat('\tREADING IN DATA AND KEYS\n')
   
-  data <- data.table(read.delim(input_file, stringsAsFactors=F))
-  keys = data.table(read.delim(keys_file, stringsAsFactors = F))
+  if(is.null(species)){
+    species <- "HUMAN"
+    cat("\t---species NOT SPECIFIED. USING DEFAULT: ",species,"\n")
+  }
   
-  tryCatch(setnames(data, 'Raw file', 'RawFile'), error=function(e) cat('Raw file in evidence not found: trying Raw.file instead\n'))
-  tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file in evidence not found: trying Raw file instead\n'))
-  tryCatch(setnames(keys, 'Raw file', 'RawFile'), error=function(e) cat('Raw file in keys not found: trying Raw.file instead\n'))
-  tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file in keys not found: trying Raw file instead\n'))
-  tryCatch(setnames(data,'Intensity','ms_intensity'), error=function(e) stop('\n\nINTENSITY NOT FOUND IN THE evidence FILE!!\n\n'))
+  if(is.null(uniprot_dir)){
+    uniprot_dir <- '~/Box Sync/db/mist/'
+    cat("\t---uniprot_dir NOT SPECIFIED. USING DEFAULT:  ",uniprot_dir,"\n")
+  }
+  
+  data <- data.table(read.delim(input_file, stringsAsFactors=F))
+  keys <- data.table(read.delim(keys_file, stringsAsFactors = F))
+  
+  cat('\tCHECKING DATA AND KEYS COLUMN NAMES\n')
+  tryCatch(setnames(data, 'Raw file', 'RawFile'), error=function(e) cat('\t--- Raw file in evidence not found: trying Raw.file instead\n'))
+  tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('\t--- Raw.file in evidence not found: trying Raw file instead\n'))
+  tryCatch(setnames(keys, 'Raw file', 'RawFile'), error=function(e) cat('\t--- Raw file in keys not found: trying Raw.file instead\n'))
+  tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('\t--- Raw.file in keys not found: trying Raw file instead\n'))
+  tryCatch(setnames(data,'Intensity','ms_intensity'), error=function(e) stop('\t--- INTENSITY NOT FOUND IN THE evidence FILE!!\n\n'))
   
   
   cat('\n\tVERIFYING DATA AND KEYS\n')
   if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
-  data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
-  data_sel = data[,c('Proteins','Condition','BioReplicate','Run','RawFile','ms_intensity'),with=F]
+  data <- mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
+  data_sel <- data[,c('Proteins','Condition','BioReplicate','Run','RawFile','ms_intensity'),with=F]
   
-  data_sel = aggregate( ms_intensity ~ Proteins+Condition+BioReplicate+Run+RawFile, data=data_sel, FUN = sum)
-  data_sel = data.frame(data_sel, bait_name=paste(data_sel$Condition, data_sel$BioReplicate, data_sel$Run, sep='_'))
+  data_sel <- aggregate( ms_intensity ~ Proteins+Condition+BioReplicate+Run+RawFile, data=data_sel, FUN = sum)
+  data_sel <- data.frame(data_sel, bait_name=paste(data_sel$Condition, data_sel$BioReplicate, data_sel$Run, sep='_'))
   
   # clean up proteins & annotate
   #~~~~~~~~~~~~~~~~~~~~~~~
@@ -643,7 +738,7 @@ MQutil.MISTINTformat <- function(input_file, keys_file, output_file, species="HU
   if( length(grep(";",data_sel$Proteins))>0 ) data_sel = data_sel[-grep(";",data_sel$Proteins),]     # NOTE!!! We lose a lot of entries this way... :\
   # keep only uniprot id
   #data_sel$uniprot_id = gsub("^.*\\|","", data_sel$Proteins)
-  data_sel$Proteins = gsub("(^.*\\|)([A-Z0-9]+)(\\|.*$)","\\2",data_sel$Proteins)
+  data_sel$Proteins <- gsub("(^.*\\|)([A-Z0-9]+)(\\|.*$)","\\2",data_sel$Proteins)
   # remove blank protein names
   if(any(data_sel$Proteins == "")){ data_sel <- data_sel[-which(data_sel$Proteins == ""),]}
   
@@ -653,7 +748,7 @@ MQutil.MISTINTformat <- function(input_file, keys_file, output_file, species="HU
   # re-order
   data_sel <- data_sel[,c("RawFile",'Proteins','ms_unique_pep', 'ms_intensity')]
   # RENAMING!
-  names(data_sel) = c('id','ms_uniprot_ac','ms_unique_pep','ms_intensity')
+  names(data_sel) <- c('id','ms_uniprot_ac','ms_unique_pep','ms_intensity')
   
   # remove interactions with ms_intensity=0
   if(any(data_sel$ms_intensity == 0)) { data_sel <- data_sel[-which(data_sel$ms_intensity==0),]}
@@ -663,14 +758,16 @@ MQutil.MISTINTformat <- function(input_file, keys_file, output_file, species="HU
   Uniprot = NULL
   for(org in species_split){
     cat(sprintf("\tLOADING %s\n",org))
-    tmp = read.delim2(sprintf("%s/uniprot_protein_descriptions_%s.txt",uniprot_dir,org), stringsAsFactors=F, quote="")    
+    tmp <- read.delim(sprintf("%s/uniprot_protein_descriptions_%s.txt",uniprot_dir,org), stringsAsFactors=F, quote="")
     if(is.null(Uniprot)){
       Uniprot = as.data.frame(tmp)
     }else{
       Uniprot = rbind(Uniprot, tmp)  
     }
   }
-  results_annotated = merge(data_sel, Uniprot, all.x=T, by.x='ms_uniprot_ac',by.y='Entry')
+  
+  cat('\tANNOTATING RESULTS...\n')
+  results_annotated <- merge(data_sel, Uniprot, all.x=T, by.x='ms_uniprot_ac',by.y='Entry')
   
   # Adding the Mass column: it is required for MIST for preprocessing!
   # For that, we will calculate the mass of the whole protein just taking the average molecular 
@@ -678,12 +775,12 @@ MQutil.MISTINTformat <- function(input_file, keys_file, output_file, species="HU
   results_annotated$Mass <- results_annotated$Length*110
   
   write.table(results_annotated, file=output_file, eol='\n', sep='\t', quote=F, row.names=F, col.names=T)
-  cat('\n>>MIST FILES CREATED!\n')
+  cat('\n>> MIST FILES CREATED!\n')
   
   keysout <- subset(keys, select = c(RawFile, Condition))
-  keysname <- 'keys_mistint.txt'
+  keysname <- gsub(".txt",'_mistintkeys.txt', output_file)
   write.table(keysout, file=keysname, eol = '\n', sep = '\t', quote = F, row.names = F, col.names = F)
-  cat('>>MIST for INTENSITIES keys FILE ALSO CREATED. Truly enjoy your day ;-)\n\n')
+  cat('>> MIST for INTENSITIES keys FILE ALSO CREATED. Enjoy your day\n\n')
 }
 
 
@@ -982,6 +1079,13 @@ main <- function(opt){
 # opt$files =  '~/Box Sync/projects/CoxJeff/results/20160801_MSStat_results_UB/msstats/TBLMSE-ub-SE-results-mss-sampleQuant.txt'
 # opt$results_file = '~/Box Sync/projects/CoxJeff/results/20160801_MSStat_results_UB/msstats/TBLMSE-ub-SE-results-wide-sites-ann.txt'
 # opt$contrast_file = '~/Box Sync/projects/CoxJeff/data/jj/ub/TBLMSE-cox-ub-silac-SE-contrasts.txt'
+
+
+# opt=c()
+# opt$command = 'mist'
+# opt$files =  '~/experiments/artms/thp1_ab_h1n1/FLU-THP1-H1N1-AB-evidence.txt'
+# opt$results_file = '~/experiments/artms/thp1_ab_h1n1/FLU-THP1-H1N1-AB-evidence-mistout.txt'
+
 # #
 # opt$files = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/results/MSstats3-results-mss-sampleQuant.txt'
 # opt$contrast_file = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/data/contrasts.txt'

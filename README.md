@@ -444,7 +444,8 @@ Arguments:
 ##### saint-format
 
 Converts the MaxQuant evidence file to the 3 required files for SAINTexpress. 
-One can choose to either use the `spectral counts` or the `intensities` for the analysis. 
+One can choose to either use the `spectral counts` or the 
+`intensities` for the analysis. 
 
 ```
 Arguments:
@@ -457,6 +458,16 @@ Arguments:
 ```
 
 ##### data-plots
+
+Protein abundance dot plots for each condition. It takes as input the 
+`-normalized.txt` output from MSstats. 
+
+```
+Arguments:
+-c data-plots
+-f normalized.txt file path
+-o output file name (add the `.pdf` extension)
+```
 
 ##### spectral-counts
 
@@ -490,7 +501,12 @@ Arguments:
 
 ##### mistint
 
-Very similar to the `mist`, but instead of using `MS/MS.Count`, uses `Intensity` values. Converts MaxQuant evidence file into a file format compatible with the MiST pipeline. Note that this is the MiST *data* file, and that an additional *keys* file will have to be constructed before running MiST. Multiple species can be searched at once, simply separate them by a "-". (eg. `HUMAN-MOUSE`)
+Very similar to the `mist` function, but instead of using `MS/MS.Count` it 
+uses `Intensity` values. Converts MaxQuant evidence file into a file format 
+compatible with the MiST pipeline. Note that this is the MiST *data* file, 
+and that an additional *keys* file will have to be constructed before 
+running MiST. Multiple species can be searched at once, 
+simply separate them by a "-". (eg. `HUMAN-MOUSE`)
 
 ```
 Arguments:
