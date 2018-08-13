@@ -10,11 +10,8 @@ suppressMessages(library(biomaRt))
 suppressMessages(library(limma))
 suppressMessages(library(ggplot2))
 
-###############################
-## FILE AND LIB LOADING #######
-
-#########################
-## CONFIG LOADING #######
+# ------------------------------------------------------------------------------
+## CONFIG LOADING
 
 ALLOWED_COMMANDS = c('getRawFiles','convert-sites','annotate','results-wide','mapback-sites','heatmap','saint-format','data-plots','spectral-counts', 'mist', 'mistint', 'samplequant', 'replicateplots')
 
@@ -41,6 +38,7 @@ spec = matrix(c(
 
 opt = getopt(spec = spec, opt = commandArgs(TRUE), command = get_Rscript_filename(), usage = FALSE, debug = FALSE)
 
+# ------------------------------------------------------------------------------
 # if help was asked for print a friendly message
 # and exit with a non-zero error code
 if ( !is.null(opt$help) ) {
@@ -48,6 +46,7 @@ if ( !is.null(opt$help) ) {
   q(status=1);
 }
 
+# ------------------------------------------------------------------------------
 # warnings for when arguments are forgotten
 if( is.null(opt$command) ) { cat("NO COMMAND (-c) ENTERED!!\n") }
 if( is.null(opt$files) ) { cat("NO FILE (-f) SEPCIFIED!!\n") }
@@ -784,8 +783,9 @@ MQutil.MISTINTformat <- function(input_file, keys_file, output_file, species, un
 }
 
 
-
-# takes in a dcast data frame containing proteins (rows) and a value for each condition (columns)
+# ------------------------------------------------------------------------------
+# takes in a dcast data frame containing proteins (rows) and a value for each 
+# condition (columns)
 MQutil.combine_sq_values <- function(dat, pos, neg){
   # collapse POSTITIVE conditions together if there's more than one
   if(length(pos)>1){
@@ -824,7 +824,7 @@ MQutil.combine_sq_values <- function(dat, pos, neg){
   return(all.counts)
 }
 
-
+# ------------------------------------------------------------------------------
 # Main wrapper that consolidates the abundance data for a results.wide file
 MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
   cat(">>SUMMARIZING ABUNDANCE DATA\n")
@@ -1058,6 +1058,10 @@ main <- function(opt){
   }
 }
 
+
+# ------------------------------------------------------------------------------
+# DEBUGGING
+# 
 # opt$command = 'data-plots'
 # opt$files = '~/Projects/HPCKrogan/Data/TBLMSE/data/swissprot/TBLMSE-cox-ub-swissprot-modK-mss-normalized.txt'
 # opt$output = '~/Projects/HPCKrogan/Data/TBLMSE/data/swissprot/TBLMSE-cox-ub-swissprot-modK-mss-normalized.pdf'
@@ -1130,7 +1134,5 @@ main <- function(opt){
 # opt$files = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/results/MSstats3-results-mss-sampleQuant.txt'
 # opt$contrast_file = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/data/contrasts.txt'
 # opt$results_file = '~/Box Sync/projects/FluomicsProteomics/other/Marazzi/results/MSstats3-results-wide-annotated.txt'
-
-
 
 main(opt)

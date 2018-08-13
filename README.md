@@ -1,31 +1,52 @@
 RMSQv3
 ===
 
-RMSQ for MSstats v3.3.10
+*RMSQ for MSstats v3*
 
 
 # Installing MSStats
 
-```
-# step 1: install dependency packages
-install.packages(c("gplots","lme4","ggplot2","ggrepel","reshape2","data.table","Rcpp","survival", "getopt","yaml", "pheatmap"))
+***Step 1: install dependencies***
 
-# Install package from bioconductor
+- Packages from CRAN
+
+```
+install.packages(c("gplots", "lme4", "ggplot2", "ggrepel", "reshape2", "data.table", "Rcpp", "survival", "getopt", "yaml", "pheatmap"))
+```
+
+- Packages from bioconductor
+
+```
 source("https://bioconductor.org/biocLite.R")
 biocLite(c("limma","marray","preprocessCore","MSnbase","biomaRt"))
+```
 
-# step 2: Install MSstats
-# - Recommended option: from bioconductor like this:
+***Step 2: Install MSstats***
+
+Recommended option: from bioconductor like this:
+
+```
 source("https://bioconductor.org/biocLite.R")
 biocLite("MSstats")
+```
 
-# - Alternatively, use the version available in this repository `MSstats_3.3.10.tar.gz`. Install it like this:
-install.packages(pkgs="MSstats_3.3.10.tar.gz",repos=NULL,type="source")
+- Alternatively, use the version available in this repository `MSstats_3.12.3.tar.gz`. Install it like this:
 
-# step 3: load the library of MSstats
+```
+install.packages(pkgs="MSstats_3.12.3.tar.gz",repos=NULL,type="source")
+```
+
+It is also available another version used a lot in the past (`MSstats_3.3.10.tar.gz`)
+
+***Step 3: load the library of MSstats***
+
+```
 library(MSstats)
+```
 
-# step 4: getting started. Check that it works
+***Step 4: getting started. Check that it works***
+
+```
 ?MSstats
 ```
 
@@ -96,7 +117,8 @@ H1N1_18H-MOCK_18H
 The configuration file in `yaml` format contains the details of the analyses 
 performed by `RMSQv3`. Check the folder `test` for a sample configuration file 
 depending on the experiment. It currently covers the quantification of 
-protein abundance, phosphorylation, ubiquitination and acetylation.
+protein abundance, phosphorylation (ph), ubiquitination (ub), 
+and acetylation (ac).
 
 The configuration file contains the following sections:
 
@@ -109,7 +131,9 @@ files :
   sample_plots : 1
 ```
 
-The file path / name of the required files. **sample_plots** creates quality
+The file `path/name` of the required files. 
+
+The option **sample_plots** (1/0) creates quality
 control plots, including heatmaps of the peptide features based on intensity
 values, and peptide counts.
 
@@ -124,7 +148,7 @@ data:
 
 ```
 fractions: 
-  enabled : 0 # 1 for protein fractions
+  enabled : 0 # 1 for protein fractions, 0 otherwise
   aggregate_fun : sum
 ```
 Multiple fractionation or separation methods are often combined in proteomics 
@@ -135,7 +159,7 @@ Use 1 to enable processing protein fractionation datasets. See the
 
 ```
 silac: 
-  enabled : 0 # 1 for SILAC experiments
+  enabled : 0 # 1 for SILAC experiments, 0 otherwise
 ```
 
 Mark 1 if the files belong to a SILAC experiment. See *Special case: SILAC*
@@ -151,10 +175,10 @@ filters:
 
 Filtering the datasets:
 
-- `contaminants` : 1 to remove contaminants (CON__ and REV__)
+- `contaminants` : 1 to remove contaminants (`CON__` and `REV__`)
 - `protein_groups` : `remove` or `keep` protein groups
-- `modifications` :  `empty` for all, `PH` to select phospho-peptides, `UB`
-ubiquitinated peptides, or `AC` to select acetylated peptides.
+- `modifications` :  `empty` for all, `ph` to select phospho-peptides, `ub`
+ubiquitinated peptides, or `ac` to select acetylated peptides.
 
 
 ```
@@ -172,16 +196,17 @@ msstats :
   feature_subset: all # all|highQuality  : highQuality seems to be buggy right now
 ```
 
-If enables (1), it will run MSstats with all the specified options 
-(read MSstats manual to find out more)
+If enabled (1), it will run MSstats with all the specified options.
+To find out more about the meaning of all the options, please, check the 
+MSstats documentation
 
 ```
 output_extras :
   enabled : 1
   msstats_output : 
   annotate : 0 # 1|0 whether to annotate the proteins in the results or not
-  species : HUMAN # can use multiple species, but separate with a "-" eg. HUMAN-MOUSE-HIV-...
-  annotation_dir : /path/to/the/files
+  species : HUMAN # if annotate = 1, provide specie name. It can use multiple species, but separate with a "-" eg. HUMAN-MOUSE-HIV-...
+  annotation_dir : /path/to/the/files # Required if "annotate = 1"
   comparisons : all # or any grep expression that returns a subset of the contrasts file
   LFC : -1 1
   FDR : 0.05
@@ -193,13 +218,12 @@ output_extras :
 
 Extra actions to perform based on the MSstats results.
 
-
 #### Special case: Protein fractionation
 
 To handle protein fractionation experiments, two options need to be activated
 
-1. the keys file must contain and additional column named "FractionKey" with 
-the information about fractionation. For example:
+1. The keys' file must contain and additional column named "`FractionKey`" with 
+the information of fractions. For example:
 
 **Raw.file**|**IsotopeLabelType**|**Condition**|**BioReplicate**|**Run**|**FractionKey**
 :-----:|:-----:|:-----:|:-----:|:-----:|:-----:
@@ -241,7 +265,7 @@ Internally, the function `getMSstatsFormat` handles the key step
 
 ```
 fractions: 
-  enabled : 1 # 1 for protein fractions
+  enabled : 1 # 1 for protein fractions, 0 otherwise
   aggregate_fun : sum
 ```
 
