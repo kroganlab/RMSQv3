@@ -3,17 +3,18 @@ files :
   data : /path/to/project/data/data/evidence.txt
   contrasts : /path/to/project/data/contrast.txt
   output : /path/to/project/results/20160621-results.txt
-  sequence_type : modified # unmodified, modified
   sample_plots : 1
 data:
   enabled : 1
-aggregation: 
-  enabled : 0
+fractions: 
+  enabled : 0 # 1 for protein fractions
   aggregate_fun : sum
+silac: 
+  enabled : 0 # 1 for SILAC experiments
 filters: 
   enabled : 1
   contaminants : 1
-  protein_groups : remove #remove, explode, ignore
+  protein_groups : remove #remove, keep
   modifications : #or empty
 msstats :
   enabled : 1
@@ -27,11 +28,6 @@ msstats :
   cutoffCensored : minFeature  # Cutoff value for censoring. only with censoredInt='NA' or '0'. Default is 'minFeature', which uses minimum value for each feature.'minFeatureNRun' uses the smallest between minimum value of corresponding feature and minimum value of corresponding run. 'minRun' uses minumum value for each run.
   MBimpute : 1 # only for summaryMethod="TMP" and censoredInt='NA' or '0'. TRUE (default) imputes 'NA' or '0' (depending on censoredInt option) by Accelated failure model. FALSE uses the values assigned by cutoffCensored.
   feature_subset: all # all|highQuality  : highQuality seems to be buggy right now
-  #missing_action : impute # impute, nointeraction, remove (hidden: impute-conditions, impute-byfeature)
-  scopeOfTechReplication : restricted # expanded, restricted
-  scopeOfBioReplication : restricted # expanded, restricted
-  equalFeatureVar : 1 # 0/1
-  labeled : 0 # 0/1
 output_extras :
   enabled : 1
   msstats_output : 

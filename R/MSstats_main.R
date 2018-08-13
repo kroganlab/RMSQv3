@@ -21,81 +21,116 @@ if(length(scriptPath)==0){
   source(paste(scriptPath,"/MSstats_functions.R",sep=""))  
 }
 
-#########################
 ## MAIN FUNCTIONS #######
-
-filterData <- function(data, config){
-  cat(">> FILTERING\n")
-  if(config$filters$protein_groups == 'remove'){
-    cat("\tPROTEIN GROUPS\tREMOVE\n")
-    data_f = removeMaxQProteinGroups(data)  
-  }else if(config$filters$protein_groups == 'explode'){
-    cat("\tPROTEIN GROUPS\tEXPLODE\n")
-    data_f = explodeMaxQProteinGroups(data)  
-  }else{
-    cat("\tPROTEIN GROUPS\tIGNORE\n")
-    data_f = data
-  }
-  if(config$filters$contaminants){
-    cat("\tCONTAMINANTS\tREMOVE\n")
-    data_f = filterMaxqData(data_f)  
-  }
-  if(!is.null(config$filters$modification)){
-    cat(sprintf("\tMODIFICATIONS\t%s\n",config$filters$modification))
-    if(config$filters$modification == 'UB'){
-      data_f = data_f[Modifications %like% 'GlyGly']
-    }else if(config$filters$modification == 'PH'){
-      data_f = data_f[Modifications %like% 'Phospho']
-    }
-  }
-  return(data_f)
-}
-
-aggregateData <- function(data_w, keys, config, castFun){
-  cat(">>AGGREGATING TECHNICAL REPEATS\n")
-  ##  we need to convert to long format for more easy aggregation
-  data_l = meltMaxQToLong(data_w, na.rm = T)
-  keysagg = flattenKeysTechRepeats(keys)
-  keysmapping = merge(keys, keysagg[,c('BioReplicate','RawFile')], by='BioReplicate')
-  setnames(keysmapping,c('RawFile.x','RawFile.y'),c('RawFile','RawFileCombined'))
-  data_l_combined = merge(data_l, keysmapping, by=c('RawFile','IsotopeLabelType'))
-  aggregate_fun = tryCatch(eval(parse(text=config$aggregation$aggregate_fun)), 
-                           error = function(e) cat("\tWARNING: argument for aggregate_fun not a valid R function - defaulting to:\t 'max'"), 
-                           finally=max) 
+# ------------------------------------------------------------------------------
+#' @title Generate MSstats format file
+#' @description Takes as input a reduced version of the Evidence file and 
+#' generates the input data.frame required by MSstats. It processes fractionated
+#' data.
+#' @param data_f Maxquant evidence data.frame filtered
+#' @param sequence_type Old option to select between the `Sequence` colu
+#' or the `Modified.sequence`. It is NOT recommended to choose the `Sequence`
+#' column.
+#' @param fraction 1 or 0 option to specified whether it is a fractionated
+#' experiment
+#' @param datafile The evidence file name (to generate the output file)
+#' @param funfunc The function to use to aggregating the data if it is a 
+#' fractionated experiment (`sum` recommended)
+#' @keywords MSstats, format, input, fractions
+#' getMSstatsFormat()
+#' @export
+getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc){
+  cat(">> ADAPTING THE DATA TO MSSTATS FORMAT\n")
   
-  data_l_combined_agg = data.table(aggregate(Intensity ~ RawFileCombined + Proteins + Sequence + Charge + IsotopeLabelType, FUN=sum, data=data_l_combined))
-  setnames(data_l_combined_agg,'RawFileCombined','RawFile')
-  data_w_agg = castMaxQToWide(data_l_combined_agg)
-  return(list(data_w_agg = data_w_agg, keys_agg = keysagg))
-}
-
-## returns data tabel in wide format
-normalizeData <- function(data_w, config){
-  cat(">> NORMALIZING\n")
-
-  if(grepl('scale|quantile|cyclicloess',config$normalization$method)){
-    cat(sprintf("\tNORMALIZATION\t%s\n",config$normalization$method))
-    data_fn = normalizeSingle(data_w=data_w, NORMALIZATION_METHOD=config$normalization$method)  
-  }else if(grepl('reference',config$normalization$method) && !is.null(config$normalization$reference) && config$normalization$reference %in% unique(data_w$Proteins)){
-    
-    ## CURRENTLY UING MSSTATS METHODS FOR REFERENCE NORMALIZATION
-    data_fn = data_w
-    
-#     cat(sprintf("\tNORMALIZATION\tTO REFERENCE\t%s\n",config$normalization$reference))
-#     ref_files = keys[keys$NormalizationGroup == 'REFERENCE', 'RawFile']
-#     data_l_ref = data_l[data_l$Raw.file %in% ref_files & data_l$Intensity > 0 & is.finite(data_l$Intensity), ]
-#     data_l_nonref = data_l[!(data_l$Raw.file %in% ref_files) & data_l$Intensity > 0 & is.finite(data_l$Intensity), ]
-#     data_l_ref_n = normalizeToReference(data_l_ref=data_l_ref, ref_protein = config$normalization$reference, output_file = config$files$output)
-#     data_fn= rbind(data_l_ref_n, data_l_nonref)
-#     data_fn = castMaxQToWide(data_fn)
-    
+  # # DEBUG
+  # sequence_type <- config$files$sequence_type
+  # fraction <- config$fractions$enabled
+  # datafile <- config$files$data
+  # funfunc <- config$fractions$aggregate_fun
+  
+  # SELECT THE SEQUENCE DO YOU WANT TO USE (OLD DEPRECATED OPTION)
+  if(sequence_type == 'modified'){
+    data_f <- changeColumnName(data_f, "Modified.sequence", "PeptideSequence")
+    data_f$PeptideSequence <- gsub("_", "", data_f$PeptideSequence)
+    cat("------- + Selecting Sequence Type: MaxQuant 'Modified.sequence' column\n")
+  }else if (sequence_type == 'unmodified'){
+    data_f <- changeColumnName(data_f, "Sequence", "PeptideSequence")
+    cat("------- + Selecting Sequence Type: MaxQuant 'Sequence' column\n")
   }else{
-    data_fn = data_w
+    stop("\n\nOPTION sequence_type NOT RECOGNIZED 
+         (VALID OPTIONS: modified OR unmodified")
   }
-
-  return(data_fn)
+  
+  # DEAL WITH FRACTIONS FIRST (but in reality it is just checking, 
+  # because it is doing a sum up of redundant features anyway)
+  if( any(grepl("FractionKey", colnames(data_f))) & fraction){
+    cat("------- + DEALING WITH FRACTIONS (sum up intensities per feature)\n")
+    predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = funfunc)
+    predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+  }else{
+    # If there are duplications, sum up
+    predmss <- aggregate(data = data_f, Intensity~Proteins+PeptideSequence+Charge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = sum)
+    predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+  }
+  
+  # step required by MSstats to add 'NA' intensity values for those 
+  # features not found in certain bioreplicates/runs
+  # If this is not done, MSstats will still works, 
+  # but it will generate a gigantic warning.
+  # Using dcast from data.table because it has the option "sep" that allows to 
+  # choose the 'collapse' character to use.
+  cat("------- + Adding NA values for missing values (required by MSstats)\n")
+  predmss_dc <- data.table::dcast(data = setDT(predmss), Proteins+PeptideSequence+Charge+IsotopeLabelType~Condition+BioReplicate+Run, value.var = "Intensity", fun.aggregate = sum, sep = "___")
+  predmss_melt <- reshape2::melt(data = predmss_dc, id.vars = c('Proteins', 'PeptideSequence', 'Charge', 'IsotopeLabelType'), value.name = "Intensity")
+  # And put back the condition, bioreplicate and run columns
+  predmss_melt$Condition <- gsub("(.*)(___)(.*)(___)(.*)", "\\1", predmss_melt$variable)
+  predmss_melt$BioReplicate <- gsub("(.*)(___)(.*)(___)(.*)", "\\3", predmss_melt$variable)
+  predmss_melt$Run <- gsub("(.*)(___)(.*)(___)(.*)", "\\5", predmss_melt$variable)
+  
+  # After the data has been aggregated, then we add the columns
+  predmss_melt$ProductCharge <- NA 
+  predmss_melt$FragmentIon <- NA
+  
+  # Names required by MSstats
+  predmss_melt <- changeColumnName(predmss_melt, "Proteins", "ProteinName")
+  predmss_melt <- changeColumnName(predmss_melt, "Charge", "PrecursorCharge")
+  
+  # And re-sort it as msstats likes it
+  dmss <- predmss_melt[,c("ProteinName", "PeptideSequence", "PrecursorCharge", "FragmentIon", "ProductCharge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
+  
+  ## sanity check for zero's
+  if(nrow(dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]) > 0){
+    dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]$Intensity = NA
+  }
+  
+  dmss <- as.data.frame(dmss)
+  cat("------- + Write out the MSstats input file (-mss.txt)\n\n")
+  write.table(dmss, file=gsub('.txt','-mss.txt',datafile), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
+  return(dmss)  
 }
 
+# ------------------------------------------------------------------------------
+#' @title Run MSstats
+#' @description Run MSstats giving a processed evidence file (MSstats format)
+#' and a contrast file. It also generates a series of summary plots before,
+#' and after normalization.
+#' @param dmss Formatted and filtered evidence file (MSstats format)
+#' @param contrasts The contrast data.frame in MSstats format
+#' @param config the configation (imported yaml) object
+#' @return It generates several output files
+#' - If selected `before` and/or `after`, the `ProfilePlot` and `QCPlot` plots 
+#' by the MSstats `dataProcessPlots` function are generated 
+#' (in `.pdf` format)
+#' - Text file output of `quantification()` (`-mss-sampleQuant.txt`)
+#' - Text file output of `quantification(type="Group")` (`-mss-groupQuant.txt`)
+#' - MSstats `ProcessedData` normalized results (`-mss-normalized.txt`)
+#' - MSstats `ComparisonResult` results
+#' - MSstats `ModelQC` results
+#' - MSstats `designSampleSize` sample size
+#' - MSstats `designSampleSize` power experiment
+#' @keywords run, MSstats, contrast, intensity, plots, QC
+#' runMSstats()
+#' @export
 runMSstats <- function(dmss, contrasts, config){
   # plot the data BEFORE normalization
   if(grepl('before', config$msstats$profilePlots)){
@@ -117,7 +152,7 @@ runMSstats <- function(dmss, contrasts, config){
   if(!is.null(config$msstats$normalization_reference) & config$msstats$normalization_method == 'globalStandards'){  # if globalStandars is selected, must have a reference protein(s)
     normalization_refs = unlist(lapply(strsplit(config$msstats$normalization_reference, split = ','), FUN=trim))
     #mssquant = dataProcess(dmss, normalization=config$msstats$normalization_method, nameStandards=normalization_refs , fillIncompleteRows=T)
-    mssquant = dataProcess(raw = dmss, 
+    mssquant <- dataProcess(raw = dmss, 
                            normalization=config$msstats$normalization_method,
                            nameStandards=normalization_refs,
                            #Interference has been depracated, but it was never used anyway
@@ -159,7 +194,6 @@ runMSstats <- function(dmss, contrasts, config){
   
   cat(sprintf('\tFITTING CONTRASTS:\t%s\n',paste(rownames(contrasts),collapse=',')))
   write.table(mssquant$ProcessedData, file=gsub('.txt','-mss-normalized.txt',config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
-  #results = groupComparison(data = mssquant, contrast.matrix = contrasts, labeled = as.logical(config$msstats$labeled), scopeOfBioReplication = config$msstats$scopeOfBioReplication, scopeOfTechReplication = config$msstats$scopeOfTechReplication, interference = as.logical(config$msstats$interference), equalFeatureVar = as.logical(config$msstats$equalFeatureVar), missing.action = config$msstats$missing_action)$ComparisonResult
   results = groupComparison(data = mssquant, contrast.matrix = contrasts)
   write.table(results$ComparisonResult, file=config$files$output, eol="\n", sep="\t", quote=F, row.names=F, col.names=T)  
   write.table(results$ModelQC, file=gsub(".txt","_ModelQC.txt",config$files$output), eol="\n", sep="\t", quote=F, row.names=F, col.names=T) 
@@ -182,35 +216,6 @@ runMSstats <- function(dmss, contrasts, config){
   
   return(results)
 }
-
-
-convertDataLongToMss <- function(data_w, keys, config, fractions){
-  cat(">> CONVERTING DATA TO MSSTATS FORMAT\n")
-  data_l = meltMaxQToLong(data_w, na.rm = F)
-  data_lk = mergeMaxQDataWithKeys(data_l, keys, by=c('RawFile','IsotopeLabelType'))
-  dmss = dataToMSSFormat(data_lk)
-
-  # PROTEIN FRACTIONS
-  if(fractions){
-    cat("\t>>Processing Fractions\n")
-    # Aggregation won't work with the NA columns, that's why we select this columns
-    predmss <- dmss[c( "ProteinName", "PeptideSequence", "ProductCharge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
-    dmss2 <- aggregate(data = predmss, Intensity~ProteinName+PeptideSequence+ProductCharge+IsotopeLabelType+Condition+BioReplicate+Run, FUN = sum)
-    # After the data has been aggregated, then we add the columns
-    dmss2$PrecursorCharge <- NA 
-    dmss2$FragmentIon <- NA
-    # And re-sort it as msstats likes it
-    dmss <- dmss2[c("ProteinName", "PeptideSequence", "PrecursorCharge", "FragmentIon", "ProductCharge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
-  }
-  
-  ## sanity check for zero's
-  if(nrow(dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]) > 0){
-    dmss[!is.na(dmss$Intensity) & dmss$Intensity == 0,]$Intensity = NA
-  } 
-  write.table(dmss, file=gsub('.txt','-mss.txt',config$files$data), eol="\n", sep="\t", quote=F, row.names=F, col.names=T)
-  return(dmss)  
-}
-
 
 # annotate the files based on the Uniprot accession id's
 Extras.annotate <- function(results, output_file=opt$output, uniprot_ac_col='Protein', group_sep=';', uniprot_dir = '~/github/kroganlab/source/db/', species='HUMAN'){
@@ -271,7 +276,18 @@ Extras.annotate <- function(results, output_file=opt$output, uniprot_ac_col='Pro
   return(results_out)
 }
 
-# Annotate data, plot volcano plots, etc
+# ------------------------------------------------------------------------------
+#' @title Write extras
+#' @description Extras after MSstats, as annotations, volcano plots, heatmaps
+#' @param results MSstats results
+#' @param config The configuration object (yaml)
+#' @return Extras as selected in the yaml file, including:
+#' - volcano plot (pdf)
+#' - Adding annotations (gene symbol based on uniprot)
+#' - 
+#' @keywords extras, annotations, volcano
+#' writeExtras()
+#' @export
 writeExtras <- function(results, config){
 
   if(length(results)==0 | !exists('results')){
@@ -323,8 +339,14 @@ writeExtras <- function(results, config){
   }
 }
 
-trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 
+#' @title Main Function
+#' @description Main function running all the selected options
+#' @param opt the object with all the options
+#' @return All the selected options
+#' @keywords main, driver, function
+#' main()
+#' @export
 main <- function(opt){
   cat(">> MSSTATS PIPELINE\n")
   config = tryCatch(yaml.load_file(opt$config), error = function(e) {cat(opt$config);break} )
@@ -332,70 +354,116 @@ main <- function(opt){
   # process MaxQuant data, link with keys, and convert for MSStats format
   if(config$data$enabled){
     cat(">> LOADING DATA\n")
-    #data = fread(config$files$data, stringsAsFactors=F, integer64 = 'double')  # Found more bugs in fread. Not worth the compormise in data integrity just to save time reading in data
-    data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
-    data <- data.table(data)
-    # Remove white Proteins ids
-    if(any(data$Proteins == "")){
-      cat (">> REMOVING EMPTY PROTEIN LABELS\n")
-      data <- data[-which(data$Proteins == ""),]
+    ## Found more bugs in fread (issue submitted to data.table on github by
+    ## JVD but it was closed with the excuse that 'is was not reproducible'
+    ## although he provided examples) 
+    ## Not worth the compromise in data integrity just to save time 
+    ## reading in data
+
+    # CHECKING FOR SILAC EXPERIMENT
+    if(!is.null(config$silac$enabled)){
+      if(config$silac$enabled){
+        output <- gsub(".txt","-silac.txt",config$files$data)
+        data <- MQutil.SILACToLong(config$files$data, output)
+      }else{
+        data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
+      }
+    }else{
+      data <- read.delim(config$files$data, stringsAsFactors=F, sep='\t')
     }
+    
+    data <- data.table(data)
     setnames(data, colnames(data), gsub('\\s','.',colnames(data)))
-    keys = read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
+    
+    keys <- read.delim(config$files$keys, stringsAsFactors=F, sep='\t')
     keys <- data.table(keys)
-    
-    ## the following lines were added to integrate the Label with the Filename when using multiple labels (e.g. H/L)
-    ## currently we leave this in because the MSstats discinction on labeltype doesn't work 
-    ## see ISSUES https://github.com/everschueren/RMSQ/issues/1
-    
-    tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the evidence file\n'))
-    tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the KEYS file (and it should crash)\n'))
+
+    if( !any(grepl("RawFile", names(data))) ){
+      tryCatch(setnames(data, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the evidence file\n'))
+    }
+    if( !any(grepl("RawFile", names(keys))) ){
+      tryCatch(setnames(keys, 'Raw.file', 'RawFile'), error=function(e) cat('Raw.file not found in the KEYS file (and it should crash)\n'))
+    }
     
     cat('\tVERIFYING DATA AND KEYS\n')
-    if(!'IsotopeLabelType' %in% colnames(data)) data[,IsotopeLabelType:='L']
-
-    data = mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
-    data$RawFile = paste(data$RawFile, data$IsotopeLabelType, sep='')
-    keys$RawFile = paste(keys$RawFile, keys$IsotopeLabelType, sep='')
-    keys$Run = paste(keys$IsotopeLabelType,keys$Run , sep='')
-    data$IsotopeLabelType = 'L'
-    keys$IsotopeLabelType = 'L'
-    data[Intensity<1,]$Intensity=NA ## fix for weird converted values from fread
     
-    ## end hacks for SILAC
+    if(!'IsotopeLabelType' %in% colnames(data)){
+      cat("------- + IsotopeLabelType not detected in evidence file! 
+                     It will be assumed that this is a label-free experiment 
+                     (adding IsotopeLabelType column with L value\n")
+      data[,IsotopeLabelType:='L']
+    }
+    
+    # HACK FOR SILAC DATA
+    if(!is.null(config$silac$enabled)){
+      if(config$silac$enabled){
+        data$RawFile = paste(data$RawFile, data$IsotopeLabelType, sep='')
+        keys$RawFile = paste(keys$RawFile, keys$IsotopeLabelType, sep='')
+        keys$Run = paste(keys$IsotopeLabelType,keys$Run , sep='')
+        data$IsotopeLabelType = 'L'
+        keys$IsotopeLabelType = 'L'
+        data <- mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
+      }else{
+        data <- mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
+      }
+    }else{
+      data <- mergeMaxQDataWithKeys(data, keys, by = c('RawFile','IsotopeLabelType'))
+    }
+
+    ## fix for weird converted values from fread
+    data[Intensity<1,]$Intensity=NA 
     
     ## FILTERING : handles Protein Groups and Modifications
     if(config$filters$enabled) data_f = filterData(data, config) else data_f=data
     
-    ## FORMATTING IN WIDE FORMAT FOR NORMALIZATION PURPOSES
-    if(config$files$sequence_type == 'modified') castFun = castMaxQToWidePTM else castFun = castMaxQToWide
-    data_w = castFun(data_f)
+    ## FORMATTING IN WIDE FORMAT TO CREATE HEATMAPS
+    if(!is.null(config$files$sequence_type)){
+      cat(">> OLD CONFIGUATION FILE DETECTED : sequence_type DETECTED. 
+              WARNING: RECOMMENDED TO ALWAYS USED modified HERE\n")
+      if(config$files$sequence_type == 'modified') castFun = castMaxQToWidePTM else castFun = castMaxQToWide
+      data_w = castFun(data_f)
+    }else{
+      data_w = castMaxQToWidePTM(data_f)
+    }
     
-    ## test code for heatmap
+    ## HEATMAPS
     if(!is.null(config$files$sample_plots) && config$files$sample_plots){
       keys_in_data = keys[keys$RawFile %in% unique(data$RawFile),]
       sampleCorrelationHeatmap(data_w = data_w, keys = keys_in_data, config = config) 
       samplePeptideBarplot(data_f, config)
     }
-    
-    ## NORMALIZATION -- we normalize with MSstats now
-    #if(config$normalization$enabled) data_fn = normalizeData(data_w, config) else data_fn=data_w
-    
   }
   
   ## MSSTATS
   if(config$msstats$enabled){
     
     if(is.null(config$msstats$msstats_input)){
-      dmss = data.table(convertDataLongToMss(data_w, keys, config, config$aggregation$enabled))
+      # Go through the old yaml version. 
+      # Before "fractions" it was called "aggregation" in the config.yaml file
+      if(!is.null(config$aggregation$enabled)){
+        config$fractions$enabled <- config$aggregation$enabled
+        config$fractions$aggregate_fun <- config$aggregation$aggregate_fun
+      }
       
-      ## make sure there are no doubles !!
-      ## doubles could arise when protein groups are being kept and the same peptide is assigned to a unique Protein. Not sure how this is possible but it seems to be like this in maxquant output. A possible explanation is that these peptides have different retention times (needs to be looked into)
-      dmss = data.frame(dmss[,j=list(ProteinName=paste(ProteinName,collapse=';'),Intensity=median(Intensity, na.rm=T)),by=c('PeptideSequence','ProductCharge','PrecursorCharge','FragmentIon','IsotopeLabelType','Run','BioReplicate','Condition')])
+      # DEPRECATED OPTION: in older versions the type of sequence 
+      # could be selected (either modified or unmodified). 
+      if(is.null(config$files$sequence_type)){
+        config$files$sequence_type <- 'modified'
+      }
+
+      dmss <- getMSstatsFormat(data_f, config$files$sequence_type, config$fractions$enabled, config$files$data, config$fractions$aggregate_fun)
+      
+      ## DEPRECATED : Make sure there are no doubles !!
+      ## doubles could arise when protein groups are being kept and the same 
+      ## peptide is assigned to a unique Protein. Not sure how this is possible 
+      ## but it seems to be like this in maxquant output. 
+      ## A possible explanation is that these peptides have different 
+      ## retention times (needs to be looked into)
+      ## dmss <- data.frame(dmss[,j=list(ProteinName=paste(ProteinName,collapse=';'),Intensity=median(Intensity, na.rm=T)),by=c('PeptideSequence','ProductCharge','PrecursorCharge','FragmentIon','IsotopeLabelType','Run','BioReplicate','Condition')])
       
     }else{
       cat(sprintf("\tREADING PREPROCESSED\t%s\n", config$msstats$msstats_input)) 
-      dmss = read.delim(config$msstats$msstats_input, stringsAsFactors=F, sep='\t')
+      dmss <- read.delim(config$msstats$msstats_input, stringsAsFactors=F, sep='\t')
       dmss <- data.table(dmss)
     }
     
@@ -407,7 +475,7 @@ main <- function(opt){
     }else if(config$msstats$version == 'MSstats.daily'){
       library('MSstats.daily', character.only = T) 
     }else{
-      stop( 'COULD NOT FIND MSSTATS VERSION. PLEASE MAKE SURE THERE IS A VERSION ON THIS MACHINE.') 
+      stop( '\n\nCOULD NOT FIND MSSTATS VERSION. PLEASE MAKE SURE THERE IS A VERSION ON THIS MACHINE.\n\n') 
     }
     
     # Read in contrasts file
@@ -446,7 +514,15 @@ if ( !is.null(opt$help) ) {
 }
 
 ## TEST WORKS WITH LATEST CODE
-opt = c(opt, config='~/Box Sync/projects/sanfordBurnham/PetroskiLab/Petroski_Wolf_RFA/results/ab20180402/config-petroski-debugging.yaml')
+## 1 Fractions
+# opt = c(opt, config='~/Box Sync/projects/sanfordBurnham/PetroskiLab/Petroski_Wolf_RFA/results/ab20180402/config-petroski-debugging.yaml')
+## 2 Abundance
+# opt = c(opt, config='~/experiments/artms/thp1_ab_h1n1/results/testing/config.yaml')
+## 3 SILAC abundance
+# opt = c(opt, config='~/experiments/artms/silac/results/config-silac.yaml')
+## 4 abundance with Technical replicates
+# opt = c(opt, config='~/experiments/artms/technical_replicas/configTR.yaml')
+
 
 if(!exists("DEBUG")){
   cat(">> RUN MODE\n")
