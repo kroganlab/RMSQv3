@@ -430,6 +430,16 @@ The file should be structured using the following format and column names:
 | etc... |   |   |   |   |   |
 | etc... |   |   |   |   |   |
 
+Example:
+
+**condition1**|**rep1\_1**|**rep1\_2**|**condition2**|**rep2\_1**|**rep2\_2**
+:-----:|:-----:|:-----:|:-----:|:-----:|:-----:
+H1N1\_03H|H1N1\_03H-1|H1N1\_03H-2|MOCK\_03H|MOCK\_03H-1|MOCK\_03H-2
+H1N1\_06H|H1N1\_06H-1|H1N1\_06H-2|MOCK\_06H|MOCK\_06H-1|MOCK\_06H-2
+H1N1\_12H|H1N1\_12H-1|H1N1\_12H-2|MOCK\_12H|MOCK\_12H-1|MOCK\_12H-2
+MOCK\_03H|MOCK\_03H-1|MOCK\_03H-2|MOCK\_06H|MOCK\_06H-1|MOCK\_06H-2
+MOCK\_03H|MOCK\_03H-1|MOCK\_03H-2|MOCK\_12H|MOCK\_12H-1|MOCK\_12H-2
+
 The arguments for this optionare as follows:
 
 ```
@@ -521,7 +531,10 @@ Arguments:
 
 ##### samplequant
 
-Aggregates the normalized abundance and replicate data from the samples. Uses the MSstat output file  `...mss-sampleQuant.txt` for the aggregations, and is applied directly to the MSstats results in ***wide*** format. The resulting file will have "abundance" appended to the end of the file name.
+Aggregates the normalized abundance and replicate data from the samples. 
+Uses the MSstat output file  `...mss-sampleQuant.txt` for the aggregations, 
+and is applied directly to the MSstats results in ***wide*** format. 
+The resulting file will have "abundance" appended to the end of the file name.
 
 ```
 Arguments:

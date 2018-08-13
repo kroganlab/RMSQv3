@@ -907,10 +907,35 @@ MQutil.sampleQuant <- function(sq_file, contrast_file, results_file){
   # return(results.all)
 }
 
-
-# create the replicate plots based on the pairings from the replicate plot file.
+# ------------------------------------------------------------------------------
+#' @title Create the replicate plots based on the pairings from 
+#' the replicate plot file
+#' 
+#' @description Outputs a replicate plots based on a user provied file 
+#' containing the replicates to be compared. Values are based on the log2 
+#' value of the maximum intensities per modified sequence. 
+#' The "replicate file" should describe which replicates of which conditions 
+#' should be compared against each other. Each row represents a replicate 
+#' plot to be created. The file should be structured using the following 
+#' format and column names:
+#' 
+#' | condition1 | rep1_1 | rep1_2 | condition2 | rep2_1 | rep2_2 |
+#' |---|---|---|---|---|---|
+#' |  Infected | Infected_Rep1_name | Infected_Rep2_name | Negative | Negative_Rep1_name | Negative_Rep2_name |
+#' | etc... |   |   |   |   |   |
+#' | etc... |   |   |   |   |   |
+#' 
+#' @param input_file MaxQuant evidence file and location
+#' @param keys_file Keys file with the experimental details
+#' @param replicate_file Replicate file
+#' @param out_file Output text file with the intensity values of every feature
+#' @return The output file of the summary of features and intensity values
+#' @keywords evidence, replica, plots
+#' MQutil.replicatePlots()
+#' @export
 MQutil.replicatePlots <- function(input_file, keys_file, replicate_file, out_file){
-  cat(">> READIN IN FILES...\n")
+  cat(">> READING IN FILES...\n")
+
   # read in data
   dat <- read.delim(input_file, stringsAsFactors=F)
   # keys
@@ -921,8 +946,13 @@ MQutil.replicatePlots <- function(input_file, keys_file, replicate_file, out_fil
   # remove negatives from MaxQuant
   if( length(grep("__", dat$Proteins)) >0 ) dat <- dat[-grep("__", dat$Proteins),]
   
-  # for UB, jj suggests using unique peptide and charge for distinguishing numbers
-  #     NOTE: dimensions betwen x and dat may differ if there is data in dat that isn't in the keys file
+  # remove blank protein names
+  if(any(dat$Proteins == "")){ dat <- dat[-which(dat$Proteins == ""),]}
+  
+  # for UB, jj suggests using unique peptide and charge for distinguishing 
+  # numbers
+  # NOTE: dimensions betwen x and dat may differ if there is data in dat that 
+  # isn't in the keys file
   names(dat)[grep("Raw.file", names(dat))] <- 'RawFile'
   # x <- merge(dat, keys[,c('RawFile','Condition','BioReplicate','IsotopeLabelType')], by=c('RawFile', 'IsotopeLabelType') )  ## !!!!!!! DIfferent for SILAC
   x <- merge(dat, keys[,c('RawFile','Condition','BioReplicate')], by=c('RawFile') )
@@ -935,6 +965,7 @@ MQutil.replicatePlots <- function(input_file, keys_file, replicate_file, out_fil
   
   # cycle through the condition pairs in the file and plot each pair
   for(i in 1:dim(repplot)[1]){
+
     cat(">>  PLOTTING REPLICATE PLOT ", i, "\n")
     
     # check if the replicate combination exists in the plots
@@ -965,13 +996,22 @@ MQutil.replicatePlots <- function(input_file, keys_file, replicate_file, out_fil
       y.label = paste0(repplot$condition1[i]," vs. ",repplot$condition2[i], "  (", repplot$rep1_1[i],"/", repplot$rep2_1[i],")")
       x.label = paste0(repplot$condition1[i]," vs. ",repplot$condition2[i], "  (", repplot$rep1_2[i],"/", repplot$rep2_2[i],")")
       # make plot name
-      plot.name <- paste( repplot$condition1[i], " vs. "  , repplot$condition2[i], " : R = ",round(reps.cor,3), sep="" )
+      plot.name <- paste( repplot$condition1[i], " vs "  , repplot$condition2[i], " R = ",round(reps.cor,3), sep="" )
+      plot.name2 <- paste( repplot$condition1[i], " vs "  , repplot$condition2[i], " R ",round(reps.cor,3), sep="" )
       #       pdf( paste( dirname(out_file), "/", gsub(" ","_",plot.name) ,"_", repplot$rep1_1[i], "_", repplot$rep1_2[i], ".pdf", sep="") )
       #       plot(rep1, rep2, main=plot.name, xlab=repplot$rep1_1[i], ylab=repplot$rep1_2[i], xlim=x.lim, ylim=y.lim, pch=".")
       #       dev.off()
       tmp <- data.frame(rep1, rep2, stringsAsFactors=F)
-      p <- ggplot(tmp, aes(x=rep1, y=rep2)) + geom_point() +xlim(x.lim[1],x.lim[2]) + ylim(x.lim[1],x.lim[2]) + ggtitle(plot.name) + labs(x=x.label, y=y.label)
-      ggsave(filename = paste( dirname(out_file), "/", gsub(" ","_",plot.name) ,"_", repplot$rep1_1[i], "_", repplot$rep1_2[i], ".pdf", sep=""), plot=p, width = 10, height = 10)
+      p <- ggplot(tmp, aes(x=rep1, y=rep2)) + 
+        geom_point() +
+        xlim(x.lim[1],x.lim[2]) + 
+        ylim(x.lim[1],x.lim[2]) + 
+        ggtitle(plot.name) + 
+        labs(x=x.label, y=y.label)
+      ggsave(filename = paste( dirname(out_file), "/", gsub(" ","_",plot.name2) ,"_", repplot$rep1_1[i], "_", repplot$rep1_2[i], ".pdf", sep=""), 
+             plot=p, 
+             width = 10, 
+             height = 10)
       
       
     }else{
