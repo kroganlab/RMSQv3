@@ -108,7 +108,7 @@ MQutil.getRawFiles <- function(filename, output){
 #' to the uniprot entry id. Examples: A34890_ph3; Q64890_ph24_ph456;
 #' Q64890_ub34_ub129_ub234; Q64890_ac35.
 #' @keywords
-#' ProteinToSiteConversion()
+#' MQutil.ProteinToSiteConversion()
 #' @export
 MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output_file, mod_type='ub') {
   
@@ -124,13 +124,15 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
   }
   
   ## read in reference proteome
-
   ref_proteome = read.fasta(file = ref_proteome_file, 
-                            seqtype = "AA", as.string = T,
-                            set.attributes = TRUE, legacy.mode = TRUE, seqonly = FALSE, strip.desc = FALSE)
+                            seqtype = "AA", 
+                            as.string = T,
+                            set.attributes = TRUE, 
+                            legacy.mode = TRUE, 
+                            seqonly = FALSE, 
+                            strip.desc = FALSE)
   
   ## make mod-site index
-  
   p_seqs = c()
   p_names = c()
   p_annots = c()
@@ -144,15 +146,23 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
   ref_table = data.table(names=p_names, annots=p_annots, seqs=p_seqs)
   ref_table[,uniprot_ac:=gsub('([a-z,0-9,A-Z]+\\|{1})([A-Z,0-9,\\_]+)(\\|[A-Z,a-z,0-9,_]+)','\\2',names)]
   
+  # get all indicies/locations of the mod_residue S|T|Y
   indices = lapply(ref_table$seqs, function(x) as.vector(str_locate_all(x,pattern=mod_residue)[[1]][,1]))
+  # list which residue it actually finds at each location
   ptm_sites = lapply(ref_table$seqs, function(x) as.vector(str_match_all(x,pattern=mod_residue)))
+  # get the number of residue locations per string
   lengths = unlist(lapply(indices, FUN = length))
+  # repeate the uniprot_ac as many times as a residue (S|T|Y) is found
   keys = rep(ref_table$uniprot_ac, lengths)
+  # combine the list of the exploded proteins (above) and add in which sites 
+  # are found as well as the location the residue was found in
   protein_indices = data.table(uniprot_ac=keys, ptm_site=unlist(ptm_sites), res_index = unlist(indices))
   
   ## map mod sites in data to index 
 
+  ## read in maxq. data
   maxq_data = fread(maxq_file, integer64 = 'double')
+  # remove contaminants, keep unique sequences, fix names
   maxq_data = maxq_data[grep("CON__|REV__",maxq_data$Proteins, invert=T),]
   unique_peptides_in_data = unique(maxq_data[,c('Proteins','Modified sequence'),with=F])
   setnames(unique_peptides_in_data,'Modified sequence','sequence')
@@ -169,9 +179,11 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
     
     if(length(mod_sites_in_peptide)>0){
       uniprot_acs = entry$Proteins
+      # separates the ambiguous cases (;) and appends the site info to all the proteins
       uniprot_acs = str_split(string = uniprot_acs, pattern = ';')[[1]]
       
       for(uac in uniprot_acs){
+        # find the protein's full sequence based on the uniprot_ac
         protein_seq = ref_table[uniprot_ac==uac,]$seqs
         if(length(protein_seq)>0){
           ## get the position of the peptide in the protein sequence
@@ -180,9 +192,11 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
           for(m in 1:length(mod_sites_in_peptide)){
             mod_site = mod_sites_in_peptide[m]   
             peptide_seq_before_site = str_sub(peptide_seq, 1, mod_site-1)
-            ## count all AA (not counting all modifications) before the modification to get the relative position of the modification in the peptide sequence
+            ## count all AA (not counting all modifications) before the 
+            ## modification to get the relative position of the modification 
+            ## in the peptide sequence
             residues_before_site = str_count(string = peptide_seq_before_site, pattern = 'A|C|D|E|F|G|H|I|K|L|M|N|P|Q|R|S|T|V|W|Y')
-            mod_site_index_in_protein = peptide_index_in_protein+residues_before_site
+            mod_site_index_in_protein = peptide_index_in_protein + residues_before_site
             protein_mod_sites = protein_indices[uniprot_ac==uac,]
             if(!is.na(mod_site_index_in_protein)){
               #cat(sprintf('%s\n',mod_site_id))
@@ -218,7 +232,6 @@ MQutil.ProteinToSiteConversion <- function (maxq_file, ref_proteome_file, output
   write.table(final_data, file = output_file, eol='\n', sep='\t',quote=F, row.names=F, col.names=T)
   
   ## write a mapping table
-
   protein_seq_mapping = unique(maxq_data[,c('Proteins','mod_seqs'),with=F])
   setnames(protein_seq_mapping,'Proteins','Protein')
   mapping_table = merge(protein_seq_mapping, mod_site_mapping_agg, by='mod_seqs', all=T)
