@@ -457,10 +457,11 @@ volcanoPlot <- function(mss_results_sel, lfc_upper, lfc_lower, FDR, file_name=''
 #' @title Generate the contrast matrix required by MSstats from a txt file
 #' @description It simplifies the process of creating the contrast file
 #' @param contrast_file The text filepath of contrasts
+#' @param all_conditions: vector of all conditions in the study
 #' @keywords 
 #' writeContrast()
 #' @export
-writeContrast <- function(contrast_file) {
+writeContrast <- function(contrast_file, all_conditions = NULL) {
   input_contrasts <- readLines(contrast_file, warn=F)
   
   # check if contrast_file is old-format (i.e the contrast_file is a matrix)
@@ -508,6 +509,15 @@ writeContrast <- function(contrast_file) {
       contrast_matrix[i, cond1] <- 1
       contrast_matrix[i, cond2] <- -1
     }
+
+	# check if conditions are all found in Evidence/Key
+	if (!is.null(all_conditions)) {
+		d <- setdiff(conds, all_conditions)
+		if (length(d) > 0) {
+			msg <- paste("These conditions are not found in the dataset:", paste(d, collapse=","))
+			stop(msg)
+		}
+	}
     return (contrast_matrix)
   }
   return (NA)

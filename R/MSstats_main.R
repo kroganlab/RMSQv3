@@ -73,6 +73,7 @@ getMSstatsFormat <- function(data_f, sequence_type, fraction, datafile, funfunc)
     predmss <- predmss[,c("Proteins", "PeptideSequence", "Charge", "IsotopeLabelType", "Condition", "BioReplicate", "Run", "Intensity")]
   }
   
+ 
   # step required by MSstats to add 'NA' intensity values for those 
   # features not found in certain bioreplicates/runs
   # If this is not done, MSstats will still works, 
@@ -480,7 +481,7 @@ main <- function(opt){
     
     # Read in contrasts file
     # contrasts = read.delim(config$files$contrasts, stringsAsFactors=F)
-    contrasts <- writeContrast(config$files$contrasts)
+    contrasts <- writeContrast(config$files$contrasts, unique(as.character(dmss$Condition)))
     # make sure the column names are in alphabetical order before continuing
     contrasts = as.matrix( contrasts[,order(dimnames(contrasts)[[2]], decreasing=F)] )
     results = runMSstats(dmss, contrasts, config)
