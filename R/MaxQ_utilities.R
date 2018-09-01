@@ -580,8 +580,8 @@ MQutil.spectralCounts <- function(input_file, keys_file, output_file){
 }
 
 # ------------------------------------------------------------------------------
-#' @title Convert MaxQuant file into a Protein Prospector like format to run 
-#' through the Mist pipeline using spectral counts.
+#' @title Convert MaxQuant Evidence file into a Protein Prospector like format 
+#' to run through the MIST pipeline using spectral counts.
 #' 
 #' @description Converts MaxQuant evidence file into a file format compatible 
 #' with the MiST pipeline using `MS/MS.Count`. Note that this is the 

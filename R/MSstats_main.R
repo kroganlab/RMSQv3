@@ -482,9 +482,7 @@ main <- function(opt){
     # Read in contrasts file
     # contrasts = read.delim(config$files$contrasts, stringsAsFactors=F)
     contrasts <- writeContrast(config$files$contrasts, unique(as.character(dmss$Condition)))
-    # make sure the column names are in alphabetical order before continuing
-    contrasts = as.matrix( contrasts[,order(dimnames(contrasts)[[2]], decreasing=F)] )
-    results = runMSstats(dmss, contrasts, config)
+    results <- runMSstats(dmss, contrasts, config)
   }
   
   ## ANNOTATING RESULT FILE
